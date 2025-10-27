@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Newspaper } from 'lucide-react';
 import { useState } from 'react';
+import Logo from '../assests/logo perfect.png';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -22,23 +23,22 @@ export default function Navbar() {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-2">
-              <Newspaper className="h-8 w-8 text-blue-600" />
+              <img src={Logo} alt="VPM Logo" className="h-10 w-auto" />
               <span className="text-xl font-bold text-gray-900">
                 Vishwa Patrakar Mahasangh
               </span>
             </Link>
           </div>
 
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden md:flex items-center space-x-8">``
             {navLinks.map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
-                className={`${
-                  isActive(link.path)
+                className={`${isActive(link.path)
                     ? 'text-blue-600 border-b-2 border-blue-600'
                     : 'text-gray-700 hover:text-blue-600'
-                } px-3 py-2 text-sm font-medium transition-colors`}
+                  } px-3 py-2 text-sm font-medium transition-colors`}
               >
                 {link.label}
               </Link>
@@ -64,11 +64,10 @@ export default function Navbar() {
                 key={link.path}
                 to={link.path}
                 onClick={() => setIsOpen(false)}
-                className={`${
-                  isActive(link.path)
+                className={`${isActive(link.path)
                     ? 'bg-blue-50 text-blue-600'
                     : 'text-gray-700 hover:bg-gray-50'
-                } block px-3 py-2 rounded-md text-base font-medium`}
+                  } block px-3 py-2 rounded-md text-base font-medium`}
               >
                 {link.label}
               </Link>
