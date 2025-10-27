@@ -21,3 +21,8 @@ dist-ssr
 *.sln
 *.sw?
 .env
+supabase/
+node_modules/
+.env
+dist/
+build/
