@@ -1,3 +1,76 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 🌐 Google Translate Styling — Blue/White Navbar Theme */
+
+/* Hide Google top banner */
+.goog-te-banner-frame.skiptranslate {
+  display: none !important;
+}
+body {
+  top: 0px !important;
+}
+
+/* Container setup */
+#google_translate_element {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: transparent !important;
+  border: none !important;
+  font-size: 14px !important;
+  line-height: 1 !important;
+  margin-left: 8px;
+}
+
+/* Hide logo and frame */
+.goog-te-gadget img,
+.goog-logo-link {
+  display: none !important;
+}
+.goog-te-gadget {
+  font-family: inherit !important;
+  font-size: 0.9rem !important;
+  color: #1e3a8a !important; /* dark blue text */
+  height: 30px !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Dropdown box itself */
+.goog-te-gadget .goog-te-combo {
+  background: white !important;
+  border: 1px solid #93c5fd !important; /* light blue border */
+  border-radius: 6px !important;
+  padding: 4px 8px !important;
+  font-size: 13px !important;
+  color: #1e3a8a !important; /* dark blue */
+  outline: none !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+.goog-te-gadget .goog-te-combo:hover {
+  border-color: #3b82f6 !important; /* blue-500 hover */
+  background: #eff6ff !important; /* light blue hover */
+}
+
+/* Clean simple layout variant */
+.goog-te-gadget-simple {
+  background-color: #ffffff !important;
+  border: 1px solid #93c5fd !important;
+  border-radius: 6px !important;
+  padding: 4px 6px !important;
+  cursor: pointer !important;
+}
+
+/* Hide Google default bottom bar */
+body > .goog-te-banner-frame {
+  display: none !important;
+}

@@ -1,19 +1,19 @@
-import { useState, useEffect } from 'react';
-import { Users } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { Users } from "lucide-react";
 
 interface Member {
-  id: string;
-  full_name: string;
+  _id: string;
+  name: string;
   email: string;
-  phone: string;
+  phone?: string;
   organization?: string;
-  registration_date: string;
+  createdAt: string;
 }
 
 export default function Members() {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetchMembers();
@@ -21,23 +21,16 @@ export default function Members() {
 
   const fetchMembers = async () => {
     try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-members`;
-
-      const response = await fetch(apiUrl, {
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-      });
-
+      const response = await fetch("http://localhost:5000/api/members"); // 👈 call your backend
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch members');
+        throw new Error(data.error || "Failed to fetch members");
       }
 
-      setMembers(data.members);
+      setMembers(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setLoading(false);
     }
@@ -82,29 +75,32 @@ export default function Members() {
             <div className="bg-gray-50 rounded-lg p-12">
               <Users className="h-16 w-16 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-500 text-lg">No registered members yet.</p>
-              <p className="text-gray-400 mt-2">Be the first to join our community!</p>
+              <p className="text-gray-400 mt-2">
+                Be the first to join our community!
+              </p>
             </div>
           </div>
         ) : (
           <>
             <div className="mb-6 text-center">
               <p className="text-gray-600">
-                <strong>{members.length}</strong> registered {members.length === 1 ? 'member' : 'members'}
+                <strong>{members.length}</strong> registered{" "}
+                {members.length === 1 ? "member" : "members"}
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {members.map((member) => (
                 <div
-                  key={member.id}
+                  key={member._id}
                   className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
                 >
                   <div className="flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mx-auto mb-4">
                     <span className="text-2xl font-bold text-blue-600">
-                      {member.full_name.charAt(0).toUpperCase()}
+                      {member.name.charAt(0).toUpperCase()}
                     </span>
                   </div>
                   <h3 className="text-lg font-semibold text-center mb-2">
-                    {member.full_name}
+                    {member.name}
                   </h3>
                   {member.organization && (
                     <p className="text-sm text-gray-600 text-center mb-2">
@@ -112,10 +108,11 @@ export default function Members() {
                     </p>
                   )}
                   <p className="text-xs text-gray-500 text-center">
-                    Member since {new Date(member.registration_date).toLocaleDateString('en-IN', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
+                    Member since{" "}
+                    {new Date(member.createdAt).toLocaleDateString("en-IN", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
                     })}
                   </p>
                 </div>
