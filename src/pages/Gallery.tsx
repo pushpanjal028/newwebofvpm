@@ -1,41 +1,19 @@
+import React from "react";
+import img1 from "../assests/uppic.jpg";
+import img2 from "../assests/uppic.jpg2.jpg";
+import img3 from "../assests/gujpic.jpg";
+import img4 from "../assests/himpic.jpg";
+import img5 from "../assests/mppic.jpg";
+import img6 from "../assests/bg .jpg";
+
 export default function Gallery() {
   const images = [
-    {
-      url: 'https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg',
-      title: 'Annual Conference 2023',
-    },
-    {
-      url: 'https://images.pexels.com/photos/3183150/pexels-photo-3183150.jpeg',
-      title: 'Workshop on Digital Journalism',
-    },
-    {
-      url: 'https://images.pexels.com/photos/7130560/pexels-photo-7130560.jpeg',
-      title: 'Press Freedom Rally',
-    },
-    {
-      url: 'https://images.pexels.com/photos/3184360/pexels-photo-3184360.jpeg',
-      title: 'Member Networking Event',
-    },
-    {
-      url: 'https://images.pexels.com/photos/3183197/pexels-photo-3183197.jpeg',
-      title: 'Awards Ceremony',
-    },
-    {
-      url: 'https://images.pexels.com/photos/3183183/pexels-photo-3183183.jpeg',
-      title: 'Training Session',
-    },
-    {
-      url: 'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg',
-      title: 'Panel Discussion',
-    },
-    {
-      url: 'https://images.pexels.com/photos/3183153/pexels-photo-3183153.jpeg',
-      title: 'International Media Summit',
-    },
-    {
-      url: 'https://images.pexels.com/photos/3184639/pexels-photo-3184639.jpeg',
-      title: 'Community Outreach',
-    },
+    { url: img1, title: 'A memorandum was given to the District Magistrate of Prayagraj by the Vishwaparker Mahasangh.' },
+    { url: img2, title: 'A memorandum was given to the District Magistrate of Prayagraj by the Vishwaparker Mahasangh.' },
+    { url: img3, title: 'Press Freedom Rally' },
+    { url: img4, title: 'Member Networking Event in Himachal pradesh' },
+    { url: img5, title: 'Awards Ceremony in Madhyapradesh' },
+    { url: img6, title: 'Training Session in Himachal pradesh' },
   ];
 
   return (

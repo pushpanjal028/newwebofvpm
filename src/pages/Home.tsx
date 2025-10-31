@@ -11,7 +11,7 @@ export default function Home() {
               Welcome to Vishwa Patrakar Mahasangh
             </h1>
             <p className="text-xl mb-8 text-blue-100">
-              A global community of journalists committed to excellence and integrity
+             Nationally registered organization of journalists
             </p>
             <Link
               to="/registration"

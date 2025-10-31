@@ -38,6 +38,8 @@ import Registration from './pages/Registration';
 import Members from './pages/Members';
 import Success from './pages/Success';
 import Cancel from './pages/Cancel';
+import News from "./pages/news";
+
 
 function App() {
   return (
@@ -50,6 +52,9 @@ function App() {
         <Route path="/members" element={<Members />} />
         <Route path="/success" element={<Success />} />
         <Route path="/cancel" element={<Cancel />} />
+
+        <Route path="/news" element={<News />} />
+
       </Routes>
     </Layout>
   );
