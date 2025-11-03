@@ -21,7 +21,7 @@ export default function Members() {
 
   const fetchMembers = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/members"); // 👈 call your backend
+      const response = await fetch("https://vpmh.org/api/members"); // 👈 call your backend
       const data = await response.json();
 
       if (!response.ok) {
