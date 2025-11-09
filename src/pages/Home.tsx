@@ -1,17 +1,18 @@
 import { Link } from 'react-router-dom';
 import { Users, Award, Globe, ArrowRight } from 'lucide-react';
+import bg from '../assests/himpic.jpg';
 
 export default function Home() {
   return (
     <div>
-      <section className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-20">
+      {/* <section className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-5xl font-bold mb-6">
-              Welcome to Vishwa Patrakar Mahasangh
+              Welcome to <br />Vishwa Patrakar Mahasangh
             </h1>
             <p className="text-xl mb-8 text-blue-100">
-             Nationally registered organization of journalists
+              Nationally registered organization of journalists
             </p>
             <Link
               to="/registration"
@@ -22,7 +23,35 @@ export default function Home() {
             </Link>
           </div>
         </div>
-      </section>
+      </section> */}
+{/* /////////////////////////////////////////////// */}
+<section
+    className="relative text-white py-20 bg-cover bg-[position:center_30%]"
+  style={{
+    backgroundImage: `url(${bg})`,
+    backgroundSize: "cover",
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "center",
+  }}
+>
+  <div className="absolute inset-0 bg-black bg-opacity-50"></div>
+
+  <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+    <h1 className="text-5xl font-bold mb-6">
+      Welcome to <br />Vishwa Patrakar Mahasangh
+    </h1>
+    <p className="text-xl mb-8 text-blue-100">
+      Nationally registered organization of journalists
+    </p>
+    <Link
+      to="/registration"
+      className="inline-flex items-center bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
+    >
+      Join Us Today
+      <ArrowRight className="ml-2 h-5 w-5" />
+    </Link>
+  </div>
+</section>
 
       <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -93,3 +122,5 @@ export default function Home() {
     </div>
   );
 }
+
+
