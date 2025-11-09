@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Users, Award, Globe, ArrowRight } from 'lucide-react';
-import bg from '../assests/himpic.jpg';
+import bg from '../assests/bg .jpg';
 
 export default function Home() {
   return (
