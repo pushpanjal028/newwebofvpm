@@ -22,10 +22,8 @@ A modern, full-featured organization website built with React, Supabase, and Tai
 - **Lucide React** for icons
 
 ### Backend
-- **Supabase** (PostgreSQL database)
-- **Supabase Edge Functions** (Deno-based serverless functions)
-- **Row Level Security (RLS)** for data protection
-
+mongodb for database 
+nodejs 
 ## Project Structure
 
 ```
@@ -47,14 +45,7 @@ vishwa-patrakar-mahasangh/
 │   ├── App.tsx              # Main app with routing
 │   ├── main.tsx             # App entry point
 │   └── index.css            # Global styles
-├── supabase/
-│   └── functions/           # Edge Functions
-│       ├── register-member/ # Member registration API
-│       ├── complete-payment/# Payment completion API
-│       └── get-members/     # Get members list API
-├── .env                     # Environment variables
-└── README.md               # This file
-```
+
 
 ## Database Schema
 
