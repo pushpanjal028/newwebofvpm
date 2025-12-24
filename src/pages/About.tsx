@@ -120,10 +120,10 @@ export default function About() {
       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 list-disc list-inside text-gray-700">
         <li>Central Executive Assembly</li>
         <li>State Executive Assemblies</li>
-        <li>Senior Journalists’ Forum</li>
+        <li>Senior Journalists Forum</li>
         <li>Awarded & Disciplinary Journalists’ Cell</li>
-        <li>Youth Journalists’ Front</li>
-        <li>Women Journalists’ Front</li>
+        <li>Youth Journalists Front</li>
+        <li>Women Journalists Front</li>
         <li>National Urdu Media Organization</li>
         <li>International Media Organization</li>
         <li>Legal Advisory Committee</li>
