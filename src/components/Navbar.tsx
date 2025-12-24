@@ -191,6 +191,11 @@ export default function Navbar() {
             <img src={Logo} alt="VPM Logo" className="h-12 md:h-16 w-auto" />
             <span className="text-xl font-bold text-gray-900">
               Vishwa Patrakar Mahasangh
+
+              <span className="hidden md:block text-xs text-gray-600">
+                (Global organization of journalists)
+              </span>
+
             </span>
           </Link>
 
@@ -200,11 +205,10 @@ export default function Navbar() {
               <Link
                 key={link.path}
                 to={link.path}
-                className={`${
-                  isActive(link.path)
+                className={`${isActive(link.path)
                     ? 'text-blue-600 border-b-2 border-blue-600'
                     : 'text-gray-700 hover:text-blue-600'
-                } px-3 py-2 text-sm font-medium transition-colors`}
+                  } px-3 py-2 text-sm font-medium transition-colors`}
               >
                 {link.label}
               </Link>
@@ -217,18 +221,16 @@ export default function Navbar() {
               onMouseLeave={() => setIsDropdownOpen(false)}
             >
               <button
-                className={`flex items-center space-x-1 px-3 py-2 text-sm font-medium ${
-                  location.pathname.includes('/members') ||
-                  location.pathname.includes('/news')
+                className={`flex items-center space-x-1 px-3 py-2 text-sm font-medium ${location.pathname.includes('/members') ||
+                    location.pathname.includes('/news')
                     ? 'text-blue-600 border-b-2 border-blue-600'
                     : 'text-gray-700 hover:text-blue-600'
-                }`}
+                  }`}
               >
                 <span>Members</span>
                 <ChevronDown
-                  className={`h-4 w-4 transform transition-transform ${
-                    isDropdownOpen ? 'rotate-180' : ''
-                  }`}
+                  className={`h-4 w-4 transform transition-transform ${isDropdownOpen ? 'rotate-180' : ''
+                    }`}
                 />
               </button>
 
@@ -275,11 +277,10 @@ export default function Navbar() {
                 key={link.path}
                 to={link.path}
                 onClick={() => setIsOpen(false)}
-                className={`${
-                  isActive(link.path)
+                className={`${isActive(link.path)
                     ? 'bg-blue-50 text-blue-600'
                     : 'text-gray-700 hover:bg-gray-50'
-                } block px-3 py-2 rounded-md text-base font-medium`}
+                  } block px-3 py-2 rounded-md text-base font-medium`}
               >
                 {link.label}
               </Link>
@@ -296,7 +297,7 @@ export default function Navbar() {
                   onClick={() => setIsOpen(false)}
                   className="block text-gray-600 hover:text-blue-600"
                 >
-                 Presedent 
+                  Presedent
                 </Link>
                 <Link
                   to="/news"
