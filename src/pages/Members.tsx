@@ -124,3 +124,70 @@ export default function Members() {
     </div>
   );
 }
+
+
+
+// import { useEffect, useState } from "react";
+
+// interface Member {
+//   _id: string;
+//   name: string;
+//   photo: string;
+//   organization: string;
+// }
+
+// export default function Members() {
+//   const [members, setMembers] = useState<Member[]>([]);
+//   const [loading, setLoading] = useState(true);
+
+//   useEffect(() => {
+//     fetch("https://vpmh.org/api/members")
+//       .then((res) => res.json())
+//       .then((data) => {
+//         setMembers(data);
+//         setLoading(false);
+//       })
+//       .catch(() => setLoading(false));
+//   }, []);
+
+//   if (loading) {
+//     return <p className="text-center mt-10">Loading members...</p>;
+//   }
+
+//   return (
+//     <div className="py-16 bg-gray-50">
+//       <div className="max-w-7xl mx-auto px-4">
+//         <h1 className="text-3xl font-bold text-center mb-10">
+//           Our Members
+//         </h1>
+
+//         {members.length === 0 ? (
+//           <p className="text-center text-gray-600">
+//             No members available.
+//           </p>
+//         ) : (
+//           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+//             {members.map((member) => (
+//               <div
+//                 key={member._id}
+//                 className="bg-white rounded-lg shadow p-6 text-center"
+//               >
+//                 <img
+//                   src={member.photo}
+//                   alt={member.name}
+//                   className="w-24 h-24 mx-auto rounded-full object-cover mb-4"
+//                 />
+//                 <h3 className="font-semibold text-lg">
+//                   {member.name}
+//                 </h3>
+//                 <p className="text-sm text-gray-500">
+//                   {member.organization || "Member"}
+//                 </p>
+//               </div>
+//             ))}
+//           </div>
+//         )}
+//       </div>
+//     </div>
+//   );
+// }

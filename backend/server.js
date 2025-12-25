@@ -20,7 +20,7 @@
 //   const { name, email, password } = req.body;
 //   try {
 //     const existingUser = await User.findOne({ email });
-//     if (existingUser) return res.status(400).json({ message: "User already exists" });
+//     if (existingUser) return res.status(400).jso n({ message: "User already exists" });
 
 //     const hashedPassword = await bcrypt.hash(password, 10);
 //     const newUser = await User.create({ name, email, password: hashedPassword });
@@ -86,4 +86,20 @@ app.get("/api/members", async (req, res) => {
 
 app.listen(process.env.PORT || 5000, () => {
   console.log(`🚀 Server running on port ${process.env.PORT || 5000}`);
+});
+
+
+
+app.get("/api/members", async (req, res) => {
+  try {
+    const members = await User.find({
+      paymentStatus: "paid",
+      approvalStatus: "approved",
+    }).select("name photo organization");
+
+    res.json(members);
+  } catch (error) {
+    console.error("❌ Fetch members error:", error);
+    res.status(500).json({ message: "Failed to fetch members" });
+  }
 });
