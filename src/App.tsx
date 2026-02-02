@@ -39,6 +39,9 @@ import Members from './pages/Members';
 import Success from './pages/Success';
 import Cancel from './pages/Cancel';
 import News from "./pages/news";
+import Contact from "./pages/contact";
+
+
 
 
 function App() {
@@ -54,7 +57,7 @@ function App() {
         <Route path="/cancel" element={<Cancel />} />
 
         <Route path="/news" element={<News />} />
-
+<Route path="/contact" element={<Contact />} />
       </Routes>
     </Layout>
   );

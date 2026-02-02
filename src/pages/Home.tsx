@@ -8,6 +8,9 @@ import meetingImg from "../assests/activity/meeting.jpeg";
 import trainingImg from "../assests/activity/training.jpeg";
 import pressmeetImg from "../assests/activity/pressmeet.jpeg";
 import fieldworkImg from "../assests/activity/fieldwork.jpeg";
+import Contact from "../pages/contact";
+import OurActivities from "../pages/OurActivity";
+
 
 
 
@@ -254,6 +257,7 @@ export default function Home() {
           </div>
         </div>
 
+
         {/* ============ IMAGE ZOOM MODAL ============ */}
         {selectedImage && (
           <div
@@ -268,6 +272,8 @@ export default function Home() {
           </div>
         )}
       </section>
+
+      <OurActivities/>
 
       {/* ================= Impact Statistics ================= */}
       <section className="py-16 bg-white border-t">
@@ -306,7 +312,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
 
       {/* ================= Latest Updates ================= */}
       <section className="py-20 bg-white border-t">
@@ -373,6 +378,9 @@ export default function Home() {
 
         </div>
       </section>
+
+      {/* ================= Contact Us ================= */}
+<Contact />
 
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

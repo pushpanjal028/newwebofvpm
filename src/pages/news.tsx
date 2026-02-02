@@ -6,7 +6,7 @@ export default function News() {
 
   const API_KEY = "AIzaSyAO5r1ODAVgOGwHeiycZdggGbBasm42jOY";
   const CHANNEL_ID = "UCRqJl-zz5ms9ChNewecmrjw";
-  const API_URL = `https://www.googleapis.com/youtube/v3/search?key=${API_KEY}&channelId=${CHANNEL_ID}&part=snippet&type=video&order=date&maxResults=6`;
+  const API_URL = `https://www.googleapis.com/youtube/v3/search?key=${API_KEY}&channelId=${CHANNEL_ID}&part=snippet&type=video&order=date&maxResults=12`;
 
   useEffect(() => {
     fetch(API_URL)
@@ -44,7 +44,7 @@ export default function News() {
         {loading ? (
           <p className="text-center text-gray-500">Loading videos...</p>
         ) : videos.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
             {videos.map((video) => (
               <a
                 key={video.id}
