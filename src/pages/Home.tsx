@@ -269,110 +269,110 @@ export default function Home() {
         )}
       </section>
 
-{/* ================= Impact Statistics ================= */}
-<section className="py-16 bg-white border-t">
-  <div className="max-w-7xl mx-auto px-4 text-center">
+      {/* ================= Impact Statistics ================= */}
+      <section className="py-16 bg-white border-t">
+        <div className="max-w-7xl mx-auto px-4 text-center">
 
-    <h2 className="text-3xl font-bold mb-4">
-      Our Growing Impact
-    </h2>
+          <h2 className="text-3xl font-bold mb-4">
+            Our Growing Impact
+          </h2>
 
-    <p className="text-gray-600 mb-12">
-      Strengthening journalism through unity, recognition, and ethical practices
-    </p>
+          <p className="text-gray-600 mb-12">
+            Strengthening journalism through unity, recognition, and ethical practices
+          </p>
 
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
 
-      <div>
-        <p className="text-4xl font-bold text-blue-700">5,000+</p>
-        <p className="text-gray-600 mt-2">Journalists Connected</p>
-      </div>
+            <div>
+              <p className="text-4xl font-bold text-blue-700">5,000+</p>
+              <p className="text-gray-600 mt-2">Journalists Connected</p>
+            </div>
 
-      <div>
-        <p className="text-4xl font-bold text-blue-700">20+</p>
-        <p className="text-gray-600 mt-2">States Covered</p>
-      </div>
+            <div>
+              <p className="text-4xl font-bold text-blue-700">20+</p>
+              <p className="text-gray-600 mt-2">States Covered</p>
+            </div>
 
-      <div>
-        <p className="text-4xl font-bold text-blue-700">100+</p>
-        <p className="text-gray-600 mt-2">Programs & Meetings</p>
-      </div>
+            <div>
+              <p className="text-4xl font-bold text-blue-700">100+</p>
+              <p className="text-gray-600 mt-2">Programs & Meetings</p>
+            </div>
 
-      <div>
-        <p className="text-4xl font-bold text-blue-700">Since 2006</p>
-        <p className="text-gray-600 mt-2">Serving Journalists</p>
-      </div>
+            <div>
+              <p className="text-4xl font-bold text-blue-700">Since 2006</p>
+              <p className="text-gray-600 mt-2">Serving Journalists</p>
+            </div>
 
-    </div>
-  </div>
-</section>
+          </div>
+        </div>
+      </section>
 
 
-{/* ================= Latest Updates ================= */}
-<section className="py-20 bg-white border-t">
-  <div className="max-w-6xl mx-auto px-4">
+      {/* ================= Latest Updates ================= */}
+      <section className="py-20 bg-white border-t">
+        <div className="max-w-6xl mx-auto px-4">
 
-    <h2 className="text-3xl font-bold text-center mb-12">
-      Latest Announcements
-    </h2>
+          <h2 className="text-3xl font-bold text-center mb-12">
+            Latest Announcements
+          </h2>
 
-    <div className="space-y-6">
+          <div className="space-y-6">
 
-      <div className="border-l-4 border-blue-700 bg-gray-50 p-4">
-        <p className="font-semibold">
-          Membership Registration Open
-        </p>
-        <p className="text-sm text-gray-600">
-          Journalists across the world are invited to register and become
-          part of Vishwa Patrakar Mahasangh.
-        </p>
-      </div>
+            <div className="border-l-4 border-blue-700 bg-gray-50 p-4">
+              <p className="font-semibold">
+                Membership Registration Open
+              </p>
+              <p className="text-sm text-gray-600">
+                Journalists across the world are invited to register and become
+                part of Vishwa Patrakar Mahasangh.
+              </p>
+            </div>
 
-      <div className="border-l-4 border-blue-700 bg-gray-50 p-4">
-        <p className="font-semibold">
-          Upcoming National Meeting
-        </p>
-        <p className="text-sm text-gray-600">
-          A national-level meeting will be announced soon. Members
-          will be informed through official channels.
-        </p>
-      </div>
+            <div className="border-l-4 border-blue-700 bg-gray-50 p-4">
+              <p className="font-semibold">
+                Upcoming National Meeting
+              </p>
+              <p className="text-sm text-gray-600">
+                A national-level meeting will be announced soon. Members
+                will be informed through official channels.
+              </p>
+            </div>
 
-      <div className="border-l-4 border-blue-700 bg-gray-50 p-4">
-        <p className="font-semibold">
-          Journalist Welfare Initiatives
-        </p>
-        <p className="text-sm text-gray-600">
-          New initiatives focused on journalist safety and welfare
-          are under development.
-        </p>
-      </div>
+            <div className="border-l-4 border-blue-700 bg-gray-50 p-4">
+              <p className="font-semibold">
+                Journalist Welfare Initiatives
+              </p>
+              <p className="text-sm text-gray-600">
+                New initiatives focused on journalist safety and welfare
+                are under development.
+              </p>
+            </div>
 
-    </div>
-  </div>
-</section>
-{/* ================= Call To Action ================= */}
-<section className="py-20 bg-blue-700 text-white">
-  <div className="max-w-5xl mx-auto px-4 text-center">
+          </div>
+        </div>
+      </section>
+      {/* ================= Call To Action ================= */}
+      <section className="py-20 bg-blue-700 text-white">
+        <div className="max-w-5xl mx-auto px-4 text-center">
 
-    <h2 className="text-3xl font-bold mb-4">
-      Become a Recognized Voice in Journalism
-    </h2>
+          <h2 className="text-3xl font-bold mb-4">
+            Become a Recognized Voice in Journalism
+          </h2>
 
-    <p className="text-blue-100 mb-8">
-      Join Vishwa Patrakar Mahasangh and stand united for
-      ethical, fearless, and responsible journalism.
-    </p>
+          <p className="text-blue-100 mb-8">
+            Join Vishwa Patrakar Mahasangh and stand united for
+            ethical, fearless, and responsible journalism.
+          </p>
 
-    <Link
-      to="/registration"
-      className="inline-block bg-white text-blue-700 px-8 py-3 rounded-lg font-semibold hover:bg-blue-50 transition"
-    >
-      Register as a Member
-    </Link>
+          <Link
+            to="/registration"
+            className="inline-block bg-white text-blue-700 px-8 py-3 rounded-lg font-semibold hover:bg-blue-50 transition"
+          >
+            Register as a Member
+          </Link>
 
-  </div>
-</section>
+        </div>
+      </section>
 
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -410,8 +410,7 @@ export default function Home() {
         </div>
       </section>
     </div>
-
-  );
+    );
 }
 
 
