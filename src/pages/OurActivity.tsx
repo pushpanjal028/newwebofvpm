@@ -1,7 +1,8 @@
+import React, { useState } from "react";
+
 export default function OurActivities() {
-    // 👉 Paste ALL your YouTube links here
-    const videoLinks = [
-        "https://youtu.be/bW8DIJO-2dc?si=leohmcL6ZGfXyYW3",
+  const videoLinks = [
+    "https://youtu.be/bW8DIJO-2dc?si=leohmcL6ZGfXyYW3",
         "https://youtu.be/YpS9MPP8quI?si=js9b4gqShz2zuybH",
         "https://youtu.be/YWMiSQtqKPE?si=BXy4zwu9tX_dSgpQ",
         "https://youtu.be/MTvYgWZVIwQ?si=6FdadsbCAu1qGP_a",
@@ -116,51 +117,69 @@ export default function OurActivities() {
         "https://youtu.be/eo2x3qI_Gq0?si=8G9fNXluu0NXiItu",
         "https://youtu.be/UIwwMkDgDZE?si=xn9vd2niCOxmpXL1",
         "https://youtu.be/U7sjdK4P8NQ?si=I2AlZHc5QI60YRSM",
-       
+  ];
 
+  // 👉 Remove duplicates
+  const uniqueVideos = Array.from(new Set(videoLinks));
 
-    ];
+  // 👉 Show limited videos initially
+  const [visibleCount, setVisibleCount] = useState(6);
 
-    // 👉 Function to extract video ID from any YouTube link
-    const getVideoId = (url: string) => {
-        if (url.includes("youtu.be/")) {
-            return url.split("youtu.be/")[1].split("?")[0];
-        }
-        if (url.includes("watch?v=")) {
-            return url.split("watch?v=")[1].split("&")[0];
-        }
-        return "";
-    };
+  const getVideoId = (url: string) => {
+    if (url.includes("youtu.be/")) {
+      return url.split("youtu.be/")[1].split("?")[0];
+    }
+    if (url.includes("watch?v=")) {
+      return url.split("watch?v=")[1].split("&")[0];
+    }
+    return "";
+  };
 
-    return (
-        <section className="py-20 bg-gray-50 border-t">
-            <div className="max-w-7xl mx-auto px-4">
-                <h2 className="text-3xl font-bold text-center mb-12">
-                    Our Activities
-                </h2>
+  return (
+    <section className="py-20 bg-[#e6ecf9] text-white">
+      <div className="max-w-7xl mx-auto px-4">
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {videoLinks.map((link, index) => {
-                        const videoId = getVideoId(link);
-                        if (!videoId) return null;
+        {/* Heading */}
+        <h2 className="text-3xl md:text-4xl text-black font-bold text-center mb-12">
+          Our Activities 🎬
+        </h2>
 
-                        return (
-                            <div
-                                key={index}
-                                className="bg-white rounded-lg shadow-md overflow-hidden"
-                            >
-                                <iframe
-                                    className="w-full h-56"
-                                    src={`https://www.youtube.com/embed/${videoId}`}
-                                    title={`Activity Video ${index + 1}`}
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                    allowFullScreen
-                                ></iframe>
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-        </section>
-    );
+        {/* Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          {uniqueVideos.slice(0, visibleCount).map((link, index) => {
+            const videoId = getVideoId(link);
+            if (!videoId) return null;
+
+            return (
+              <div
+                key={index}
+                className="rounded-xl overflow-hidden shadow-lg hover:scale-105 transition"
+              >
+                <iframe
+                  className="w-full h-56"
+                  src={`https://www.youtube.com/embed/${videoId}`}
+                  title={`Video ${index + 1}`}
+                  loading="lazy"
+                  allowFullScreen
+                ></iframe>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Load More Button */}
+        {visibleCount < uniqueVideos.length && (
+          <div className="text-center mt-10">
+            <button
+              onClick={() => setVisibleCount(prev => prev + 3)}
+              className="bg-sky-400 text-black px-6 py-3 rounded-xl font-semibold hover:bg-sky-300 transition"
+            >
+              Load More
+            </button>
+          </div>
+        )}
+
+      </div>
+    </section>
+  );
 }
