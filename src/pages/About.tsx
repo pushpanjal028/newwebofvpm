@@ -72,7 +72,7 @@ export default function About() {
   <div className="text-center mb-10">
     <h1 className="text-4xl font-bold text-gray-900">About Us</h1>
     <p className="mt-3 text-gray-600 text-lg">
-      World Federation of Journalists – Vishwapatrkar Mahasangh
+      World Federation of Journalists – Vishwa Patrkar Mahasangh
     </p>
   </div>
 
