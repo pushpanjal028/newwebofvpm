@@ -5,7 +5,8 @@ import dotenv from "dotenv";
 import cors from "cors";
 import authRoutes from "./routes/authRoutes.js";
 import User from "./models/userModel.js";
-
+import dns from "node:dns/promises";
+dns.setServers(["8.8.8.8","1.1.1.1"]);
 
 dotenv.config();
 
