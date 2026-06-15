@@ -1,21 +1,30 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
-/* 🌐 Google Translate Styling — Blue/White Navbar Theme */
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 dark:bg-[#030712] dark:text-[#F3F4F6] font-sans antialiased selection:bg-blue-600 selection:text-white;
+    background-image: 
+      radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+      radial-gradient(circle at 90% 80%, rgba(99, 102, 241, 0.04) 0%, transparent 50%);
+    background-attachment: fixed;
+    top: 0px !important;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  
+  .dark body {
+    background-image: 
+      radial-gradient(circle at 10% 20%, rgba(15, 23, 42, 0.3) 0%, transparent 50%),
+      radial-gradient(circle at 90% 80%, rgba(99, 102, 241, 0.08) 0%, transparent 50%);
+  }
+}
 
-/* Hide Google top banner */
+/* 🌐 Google Translate Styling */
 .goog-te-banner-frame.skiptranslate {
   display: none !important;
 }
-body {
-  top: 0px !important;
-}
 
-/* Container setup */
 #google_translate_element {
   display: inline-flex !important;
   align-items: center !important;
@@ -27,50 +36,206 @@ body {
   margin-left: 8px;
 }
 
-/* Hide logo and frame */
 .goog-te-gadget img,
 .goog-logo-link {
   display: none !important;
 }
+
 .goog-te-gadget {
   font-family: inherit !important;
   font-size: 0.9rem !important;
-  color: #1e3a8a !important; /* dark blue text */
+  color: #D4AF37 !important; /* Gold text */
   height: 30px !important;
   overflow: hidden !important;
   display: flex !important;
-  align-items: center !important;
+  align-items: center;
 }
 
-/* Dropdown box itself */
 .goog-te-gadget .goog-te-combo {
-  background: white !important;
-  border: 1px solid #93c5fd !important; /* light blue border */
-  border-radius: 6px !important;
-  padding: 4px 8px !important;
+  background: rgba(255, 255, 255, 0.8) !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+  border-radius: 9999px !important;
+  padding: 4px 12px !important;
   font-size: 13px !important;
-  color: #1e3a8a !important; /* dark blue */
+  color: #1e293b !important;
   outline: none !important;
   cursor: pointer !important;
-  transition: all 0.2s ease !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+.dark .goog-te-gadget .goog-te-combo {
+  background: rgba(15, 23, 42, 0.8) !important;
+  border: 1px solid rgba(212, 175, 55, 0.4) !important;
+  color: #F3F4F6 !important;
 }
 
 .goog-te-gadget .goog-te-combo:hover {
-  border-color: #3b82f6 !important; /* blue-500 hover */
-  background: #eff6ff !important; /* light blue hover */
+  border-color: #D4AF37 !important;
+  background: rgba(255, 255, 255, 1) !important;
 }
 
-/* Clean simple layout variant */
-.goog-te-gadget-simple {
-  background-color: #ffffff !important;
-  border: 1px solid #93c5fd !important;
-  border-radius: 6px !important;
-  padding: 4px 6px !important;
-  cursor: pointer !important;
+.dark .goog-te-gadget .goog-te-combo:hover {
+  background: rgba(30, 41, 59, 0.9) !important;
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.2) !important;
 }
 
-/* Hide Google default bottom bar */
-body > .goog-te-banner-frame {
-  display: none !important;
+/* Scrollbar customization */
+::-webkit-scrollbar {
+  width: 8px;
 }
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+.dark ::-webkit-scrollbar-track {
+  background: #030712;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+  border: 2px solid #f1f5f9;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #1F2937;
+  border: 2px solid #030712;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #374151;
+}
+
+/* Custom premium styles */
+.glassmorphism {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.dark .glassmorphism {
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glassmorphism-card {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glassmorphism-card:hover {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(59, 130, 246, 0.2);
+  box-shadow: 0 12px 40px 0 rgba(59, 130, 246, 0.1);
+}
+
+.dark .glassmorphism-card {
+  background: rgba(23, 37, 84, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+.dark .glassmorphism-card:hover {
+  background: rgba(23, 37, 84, 0.25);
+  border-color: rgba(99, 102, 241, 0.25);
+  box-shadow: 0 12px 40px 0 rgba(99, 102, 241, 0.15);
+}
+
+/* 3D Isometric grid background */
+.grid-3d-bg {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(0, 0, 0, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
+  mask-image: radial-gradient(ellipse 60% 50% at 50% 50%, #000 70%, transparent 100%);
+  transition: all 0.3s ease;
+}
+
+.dark .grid-3d-bg {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+}
+
+/* Float Animations */
+@keyframes float {
+  0% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-15px) rotate(3deg); }
+  100% { transform: translateY(0px) rotate(0deg); }
+}
+
+@keyframes float-delayed {
+  0% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(15px) rotate(-3deg); }
+  100% { transform: translateY(0px) rotate(0deg); }
+}
+
+@keyframes slow-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.animate-float-slow {
+  animation: float 8s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: float-delayed 10s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: slow-spin 25s linear infinite;
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 25s linear infinite;
+}
+
+/* Text glow styles */
+.text-glow-gold {
+  text-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+}
+.dark .text-glow-gold {
+  text-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+}
+
+.text-glow-blue {
+  text-shadow: 0 0 12px rgba(59, 130, 246, 0.2);
+}
+.dark .text-glow-blue {
+  text-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+}
+
+/* 📰 Google Translate & Theme Logo Color Overrides */
+#navbar-logo-link,
+#navbar-logo-link * {
+  color: #0f172a !important; /* light mode text (slate-900) */
+  transition: color 0.3s ease;
+}
+
+#navbar-logo-link span.text-amber-600,
+#navbar-logo-link span.text-amber-600 * {
+  color: #d97706 !important; /* light mode gold (amber-600) */
+}
+
+.dark #navbar-logo-link,
+.dark #navbar-logo-link * {
+  color: #ffffff !important; /* dark mode text (white) */
+}
+
+.dark #navbar-logo-link span.text-amber-400,
+.dark #navbar-logo-link span.text-amber-400 * {
+  color: #fbbf24 !important; /* dark mode gold (amber-400) */
+}
+

@@ -1,68 +1,62 @@
 import { Link } from 'react-router-dom';
 import { XCircle, Home, ArrowLeft } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export default function Cancel() {
   return (
-    <div className="py-16">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <XCircle className="h-24 w-24 text-red-500 mx-auto mb-6" />
-        <h1 className="text-4xl font-bold mb-4">Payment Cancelled</h1>
-        <p className="text-xl text-gray-600 mb-8">
-          Your registration was not completed. No charges have been made to your account.
-        </p>
+    <div className="py-20 bg-[#030712] min-h-screen relative overflow-hidden flex items-center justify-center">
+      <div className="absolute inset-0 grid-3d-bg opacity-15 pointer-events-none" />
+      
+      <div className="max-w-2xl w-full mx-auto px-4 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="glassmorphism-card rounded-3xl p-8 md:p-10 border border-white/10 shadow-2xl text-center relative overflow-hidden"
+        >
+          <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-red-500 to-rose-400" />
 
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
-          <h3 className="font-semibold text-gray-800 mb-2">What Happened?</h3>
-          <p className="text-gray-700 text-sm mb-4">
-            You cancelled the payment process or there was an issue completing your transaction.
-            Your registration information has been saved but not activated.
+          <div className="inline-flex p-4 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 mb-6">
+            <XCircle className="h-16 w-16" />
+          </div>
+
+          <h1 className="text-3xl md:text-4xl font-extrabold text-white mb-4 tracking-wide">
+            Registration Cancelled
+          </h1>
+          <p className="text-slate-400 text-sm md:text-base mb-8 max-w-md mx-auto leading-relaxed">
+            Your verification or registration process was suspended. No changes have been applied to your membership status.
           </p>
-          <p className="text-gray-700 text-sm">
-            If you encountered any issues or have questions, please contact our support team
-            at <a href="mailto:support@vishwapatrakar.org" className="text-blue-600 hover:underline">
-              support@vishwapatrakar.org
-            </a>
-          </p>
-        </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
-          <h3 className="font-semibold text-gray-800 mb-3">Need Help?</h3>
-          <ul className="text-sm text-gray-700 space-y-2 text-left max-w-md mx-auto">
-            <li className="flex items-start">
-              <span className="text-blue-600 mr-2">•</span>
-              <span>Check if your payment method is valid and has sufficient funds</span>
-            </li>
-            <li className="flex items-start">
-              <span className="text-blue-600 mr-2">•</span>
-              <span>Ensure your internet connection is stable</span>
-            </li>
-            <li className="flex items-start">
-              <span className="text-blue-600 mr-2">•</span>
-              <span>Try using a different browser or device</span>
-            </li>
-            <li className="flex items-start">
-              <span className="text-blue-600 mr-2">•</span>
-              <span>Contact your bank if the problem persists</span>
-            </li>
-          </ul>
-        </div>
+          <div className="bg-slate-950/40 border border-white/5 rounded-2xl p-6 mb-8 text-left space-y-3">
+            <h3 className="font-bold text-white text-sm mb-1 uppercase tracking-wider text-amber-400">What Happened?</h3>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              The transaction session was closed, or there was a system interruption. Your data remains unverified and inactive.
+            </p>
+            <p className="text-xs text-slate-300 border-t border-white/5 pt-3 mt-3">
+              If this was an error, please reach our helpline team at:{" "}
+              <a href="mailto:info.vpm2006@gmail.com" className="text-amber-400 hover:underline">
+                info.vpm2006@gmail.com
+              </a>
+            </p>
+          </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link
-            to="/registration"
-            className="inline-flex items-center justify-center bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5 mr-2" />
-            Try Again
-          </Link>
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
-          >
-            <Home className="h-5 w-5 mr-2" />
-            Go to Homepage
-          </Link>
-        </div>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link
+              to="/registration"
+              className="inline-flex items-center justify-center bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 px-6 py-3 rounded-xl font-bold transition-all hover:scale-[1.02] shadow-[0_0_15px_rgba(245,158,11,0.15)]"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Try Again
+            </Link>
+            <Link
+              to="/"
+              className="inline-flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-white border border-white/10 px-6 py-3 rounded-xl font-bold transition-all hover:scale-[1.02]"
+            >
+              <Home className="h-4 w-4 mr-2" />
+              Go to Homepage
+            </Link>
+          </div>
+        </motion.div>
       </div>
     </div>
   );

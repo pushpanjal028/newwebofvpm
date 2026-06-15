@@ -3,7 +3,7 @@ import React, { useState } from "react";
 export default function OurActivities() {
   const videoLinks = [
     "https://youtu.be/bW8DIJO-2dc?si=leohmcL6ZGfXyYW3",
-        "https://youtu.be/YpS9MPP8quI?si=js9b4gqShz2zuybH",
+    "https://youtu.be/YpS9MPP8quI?si=js9b4gqShz2zuybH",
         "https://youtu.be/YWMiSQtqKPE?si=BXy4zwu9tX_dSgpQ",
         "https://youtu.be/MTvYgWZVIwQ?si=6FdadsbCAu1qGP_a",
         "https://youtu.be/gRsQe5OHI8w?si=pUr7NB--5Ekh4UYK",
