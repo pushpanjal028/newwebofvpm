@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Heart, Target, Eye, ChevronDown, Calendar, ShieldCheck, Landmark } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Tilt from "../components/Tilt";

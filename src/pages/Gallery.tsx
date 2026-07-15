@@ -33,7 +33,7 @@ export default function Gallery() {
   const itemVariants = {
     hidden: { opacity: 0, y: 30 },
     visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 80 } }
-  };
+  } as const;
 
   return (
     <div className="py-20 bg-slate-50 dark:bg-[#030712] text-slate-800 dark:text-slate-100 transition-colors duration-300 min-h-screen relative overflow-hidden">

@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Users, Award, Globe, ArrowRight, Play, BookOpen, ShieldAlert, X, Youtube, Loader2 } from 'lucide-react';
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import bg from '../assests/bg .jpg';
+
 import chairmanImg from "../assests/leadership/chairman.jpeg";
 import trusteeImg from "../assests/leadership/geeta.png";
 import meetingImg from "../assests/activity/meeting.jpeg";
