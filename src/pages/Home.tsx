@@ -20,7 +20,7 @@ export default function Home() {
   const [loadingVideos, setLoadingVideos] = useState(true);
 
   useEffect(() => {
-    const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY || "";
+    const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY || "AIzaSyB6Y1I4Er3OwxcPptHjgdfiR1kbojfS_9U";
     const CHANNEL_ID = "UCRqJl-zz5ms9ChNewecmrjw";
     const API_URL = `https://www.googleapis.com/youtube/v3/search?key=${API_KEY}&channelId=${CHANNEL_ID}&part=snippet&type=video&order=date&maxResults=3`;
 
