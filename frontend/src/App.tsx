@@ -1,21 +1,21 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import Layout from "./components/common/Layout";
-import Home from "./features/home/Home";
-import About from "./features/about/About";
-import Gallery from "./features/gallery/Gallery";
-import Registration from "./features/auth/Registration";
-import Members from "./features/members/Members";
-import Success from "./features/payment/Success";
-import Cancel from "./features/payment/Cancel";
-import News from "./features/news/news";
-import Contact from "./features/contact/contact";
-import Payment from "./features/payment/Payment";
-import Login from "./features/auth/Login";
-import AdminDashboard from "./features/admin/AdminDashboard";
-import UserDashboard from "./features/dashboard/UserDashboard";
-import IdCard from "./features/members/IdCard";
-import Verify from "./features/members/Verify";
+import Layout from "@/components/common/Layout";
+import Home from "@/features/home/Home";
+import About from "@/features/about/About";
+import Gallery from "@/features/gallery/Gallery";
+import Registration from "@/features/auth/Registration";
+import Members from "@/features/members/Members";
+import Success from "@/features/payment/Success";
+import Cancel from "@/features/payment/Cancel";
+import News from "@/features/news/news";
+import Contact from "@/features/contact/contact";
+import Payment from "@/features/payment/Payment";
+import Login from "@/features/auth/Login";
+import AdminDashboard from "@/features/admin/AdminDashboard";
+import UserDashboard from "@/features/dashboard/UserDashboard";
+import IdCard from "@/features/members/IdCard";
+import Verify from "@/features/members/Verify";
 
 // Client-side Standard Protected Route for logged-in members
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
