@@ -57,7 +57,7 @@ export default function Payment() {
 
       await submitPayment(data);
       setSuccess(true);
-      
+
       // Clear fields
       setTransactionId("");
       setScreenshot(null);
@@ -74,8 +74,8 @@ export default function Payment() {
   };
 
   // UPI Link payload for QR code: Standard UPI payment format
-  const upiId = "info.vpm2006@icici";
-  const orgName = "Vishwa Patrakar Mahasangh";
+  const upiId = "geetashukla486@okicici";
+  const orgName = "Geeta Shukla";
   const upiLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(orgName)}&am=100&cu=INR`;
 
   return (
@@ -83,7 +83,7 @@ export default function Payment() {
       <div className="absolute inset-0 grid-3d-bg opacity-15 pointer-events-none" />
 
       <div className="max-w-4xl w-full mx-auto px-4 relative z-10 grid grid-cols-1 md:grid-cols-12 gap-8">
-        
+
         {/* LEFT PANEL: Payment Instructions (7 columns on desktop) */}
         <motion.div
           initial={{ opacity: 0, x: -25 }}
@@ -92,7 +92,7 @@ export default function Payment() {
           className="md:col-span-7 bg-white/95 rounded-3xl p-6 md:p-8 border border-slate-200 shadow-2xl relative overflow-hidden flex flex-col justify-between"
         >
           <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-amber-500 to-amber-600" />
-          
+
           <div className="space-y-6">
             <div>
               <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
@@ -144,19 +144,19 @@ export default function Payment() {
               <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 border p-4 rounded-2xl">
                 <div>
                   <p className="text-slate-500 uppercase tracking-widest text-[9px] font-bold">Account Name</p>
-                  <p className="font-bold text-slate-800">Vishwa Patrakar Mahasangh</p>
+                  <p className="font-bold text-slate-800">Vishwa Patrakar Mahasangh(GEETA SHUKLA)</p>
                 </div>
                 <div>
                   <p className="text-slate-500 uppercase tracking-widest text-[9px] font-bold">Bank Name</p>
-                  <p className="font-bold text-slate-800">ICICI Bank</p>
+                  <p className="font-bold text-slate-800">Bank of baroda</p>
                 </div>
                 <div className="col-span-2 border-t pt-2 mt-1">
                   <p className="text-slate-500 uppercase tracking-widest text-[9px] font-bold">Account Number</p>
-                  <p className="font-black text-amber-700 text-sm font-mono tracking-wider">629305018372</p>
+                  <p className="font-black text-amber-700 text-sm font-mono tracking-wider">06740100027014</p>
                 </div>
                 <div className="col-span-2 border-t pt-2">
                   <p className="text-slate-500 uppercase tracking-widest text-[9px] font-bold">IFSC Code</p>
-                  <p className="font-bold text-slate-800 font-mono tracking-wide">ICIC0006293</p>
+                  <p className="font-bold text-slate-800 font-mono tracking-wide">BARB0NAINIX</p>
                 </div>
               </div>
             </div>
