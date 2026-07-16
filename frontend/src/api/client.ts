@@ -48,6 +48,14 @@ export const fetchWithAuth = async (endpoint: string, options: RequestInit = {})
 export const getUploadUrl = (relativePath: string) => {
   if (!relativePath) return "";
   if (relativePath.startsWith("http")) return relativePath;
+  
+  let cleanPath = relativePath.trim();
+  if (!cleanPath.toLowerCase().includes("uploads")) {
+    cleanPath = cleanPath.startsWith("/") ? `/uploads${cleanPath}` : `/uploads/${cleanPath}`;
+  } else {
+    cleanPath = cleanPath.startsWith("/") ? cleanPath : `/${cleanPath}`;
+  }
+  
   const CLEAN_BASE = BASE_URL.endsWith("/api") ? BASE_URL.slice(0, -4) : BASE_URL;
-  return `${CLEAN_BASE}${relativePath}`;
+  return `${CLEAN_BASE}${cleanPath}`;
 };

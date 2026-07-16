@@ -1,6 +1,7 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Layout from "@/components/common/Layout";
+import ScrollToTop from "@/components/common/ScrollToTop";
 import Home from "@/features/home/Home";
 import About from "@/features/about/About";
 import Gallery from "@/features/gallery/Gallery";
@@ -48,6 +49,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 function App() {
   return (
     <Layout>
+      <ScrollToTop />
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Home />} />
