@@ -1,0 +1,23 @@
+node_modules/
+dist/
+build/
+.dist/
+*.log
+
+# Frontend-specific patterns
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/*.log
+
+# Backend-specific patterns
+backend/node_modules/
+backend/uploads/
+backend/.env
+backend/*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
