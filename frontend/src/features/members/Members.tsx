@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Users, ShieldCheck, Loader2, Search, MapPin, Building, CreditCard } from "lucide-react";
 import { motion } from "framer-motion";
-import Tilt from "../components/Tilt";
-import { getPublicMembers, getUploadUrl } from "../api";
+import Tilt from "../../components/ui/Tilt";
+import { getPublicMembers, getUploadUrl } from "../../api";
 
 interface Member {
   _id: string;

@@ -6,8 +6,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
-import { getCurrentMemberProfile, updateMemberProfile, changeMemberPassword, getUploadUrl, clearAuth } from "../api";
-import Logo from "../assets/logo perfect.png";
+import { getCurrentMemberProfile, updateMemberProfile, changeMemberPassword, getUploadUrl, clearAuth } from "../../api";
+import Logo from "../../assets/logo perfect.png";
 
 interface ProfileData {
   _id: string;

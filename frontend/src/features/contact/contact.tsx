@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Mail, Phone, MapPin, Send, AlertCircle, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { submitContact } from "../api";
+import { submitContact } from "../../api";
 
 export default function Contact() {
   const [formData, setFormData] = useState({

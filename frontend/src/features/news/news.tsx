@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Loader2, Play, Youtube, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
-import Tilt from "../components/Tilt";
+import Tilt from "../../components/ui/Tilt";
 
 const FALLBACK_NEWS = [
   {

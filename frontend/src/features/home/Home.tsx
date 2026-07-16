@@ -3,16 +3,16 @@ import { Users, Award, Globe, ArrowRight, Play, BookOpen, ShieldAlert, X, Youtub
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
-import chairmanImg from "../assets/leadership/chairman.jpeg";
-import trusteeImg from "../assets/leadership/geeta.png";
-import meetingImg from "../assets/activity/meeting.jpeg";
-import trainingImg from "../assets/activity/training.jpeg";
-import pressmeetImg from "../assets/activity/pressmeet.jpeg";
-import fieldworkImg from "../assets/activity/fieldwork.jpeg";
-import Contact from "../pages/contact";
-import OurActivities from "../pages/OurActivity";
-import Tilt from "../components/Tilt";
-import GlobeCanvas from "../components/GlobeCanvas";
+import chairmanImg from "../../assets/leadership/chairman.jpeg";
+import trusteeImg from "../../assets/leadership/geeta.png";
+import meetingImg from "../../assets/activity/meeting.jpeg";
+import trainingImg from "../../assets/activity/training.jpeg";
+import pressmeetImg from "../../assets/activity/pressmeet.jpeg";
+import fieldworkImg from "../../assets/activity/fieldwork.jpeg";
+import Contact from "../contact/contact";
+import OurActivities from "../activities/OurActivity";
+import Tilt from "../../components/ui/Tilt";
+import GlobeCanvas from "../../components/ui/GlobeCanvas";
 
 export default function Home() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);

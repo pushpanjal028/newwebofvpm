@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ShieldCheck, AlertTriangle, Loader2, Award, Calendar, MapPin, Building, Briefcase } from "lucide-react";
 import { motion } from "framer-motion";
-import { getPublicVerification, getUploadUrl } from "../api";
-import Logo from "../assets/logo perfect.png";
+import { getPublicVerification, getUploadUrl } from "../../api";
+import Logo from "../../assets/logo perfect.png";
 
 interface VerifyDetails {
   name: string;

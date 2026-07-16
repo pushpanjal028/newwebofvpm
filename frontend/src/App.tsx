@@ -1,21 +1,21 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import Layout from "./components/Layout";
-import Home from "./pages/Home";
-import About from "./pages/About";
-import Gallery from "./pages/Gallery";
-import Registration from "./pages/Registration";
-import Members from "./pages/Members";
-import Success from "./pages/Success";
-import Cancel from "./pages/Cancel";
-import News from "./pages/news";
-import Contact from "./pages/contact";
-import Payment from "./pages/Payment";
-import Login from "./pages/Login";
-import AdminDashboard from "./pages/AdminDashboard";
-import UserDashboard from "./pages/UserDashboard";
-import IdCard from "./pages/IdCard";
-import Verify from "./pages/Verify";
+import Layout from "./components/common/Layout";
+import Home from "./features/home/Home";
+import About from "./features/about/About";
+import Gallery from "./features/gallery/Gallery";
+import Registration from "./features/auth/Registration";
+import Members from "./features/members/Members";
+import Success from "./features/payment/Success";
+import Cancel from "./features/payment/Cancel";
+import News from "./features/news/news";
+import Contact from "./features/contact/contact";
+import Payment from "./features/payment/Payment";
+import Login from "./features/auth/Login";
+import AdminDashboard from "./features/admin/AdminDashboard";
+import UserDashboard from "./features/dashboard/UserDashboard";
+import IdCard from "./features/members/IdCard";
+import Verify from "./features/members/Verify";
 
 // Client-side Standard Protected Route for logged-in members
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {

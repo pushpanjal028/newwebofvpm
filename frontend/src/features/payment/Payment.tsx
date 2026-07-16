@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { CreditCard, Shield, CheckCircle, Info, Upload, AlertCircle, Building, QrCode } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
-import { submitPayment } from "../api";
+import { submitPayment } from "../../api";
 
 export default function Payment() {
   const navigate = useNavigate();

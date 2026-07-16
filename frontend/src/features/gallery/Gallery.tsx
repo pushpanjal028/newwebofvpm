@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Image, X, ZoomIn } from "lucide-react";
-import Tilt from "../components/Tilt";
+import Tilt from "../../components/ui/Tilt";
 
-import img1 from "../assets/uppic.jpg";
-import img2 from "../assets/uppic.jpg2.jpg";
-import img3 from "../assets/gujpic.jpg";
-import img4 from "../assets/himpic.jpg";
-import img5 from "../assets/mppic.jpg";
-import img6 from "../assets/bg .jpg";
+import img1 from "../../assets/uppic.jpg";
+import img2 from "../../assets/uppic.jpg2.jpg";
+import img3 from "../../assets/gujpic.jpg";
+import img4 from "../../assets/himpic.jpg";
+import img5 from "../../assets/mppic.jpg";
+import img6 from "../../assets/bg .jpg";
 
 export default function Gallery() {
   const [selectedImg, setSelectedImg] = useState<{ url: string; title: string } | null>(null);

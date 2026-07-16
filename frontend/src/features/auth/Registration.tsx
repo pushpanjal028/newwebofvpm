@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { UserPlus, User, Mail, Phone, Building, Map, Key, Image, FileText, Briefcase, ArrowRight, ShieldCheck, AlertCircle, X, Loader2, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { registerUser, sendOtp } from "../api";
+import { registerUser, sendOtp } from "../../api";
 
 export default function Registration() {
   const navigate = useNavigate();

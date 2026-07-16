@@ -9,7 +9,7 @@ import {
   getAdminStats, getAdminMembers, getAdminAuditLogs,
   updateMemberDetails, deleteMember, verifyPayment, verifyMembership,
   getUploadUrl, clearAuth
-} from "../api";
+} from "../../api";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();

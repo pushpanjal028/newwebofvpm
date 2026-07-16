@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { CheckCircle, Clock, Mail, Home, Users, Loader2, CreditCard, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
-import { getMemberStatus, getUploadUrl } from "../api";
+import { getMemberStatus, getUploadUrl } from "../../api";
 
 interface UserProfile {
   name: string;

@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Printer, ShieldCheck, AlertCircle, Loader2, ArrowLeft, Calendar } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { getPublicVerification, getUploadUrl } from "../api";
-import Logo from "../assets/logo perfect.png";
+import { getPublicVerification, getUploadUrl } from "../../api";
+import Logo from "../../assets/logo perfect.png";
 
 interface MemberDetails {
   name: string;

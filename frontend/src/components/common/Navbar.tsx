@@ -2,8 +2,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, Globe, LogOut, ChevronDown } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getUploadUrl } from "../api";
-import Logo from "../assets/logo perfect.png";
+import { getUploadUrl } from "../../api";
+import Logo from "../../assets/logo perfect.png";
 
 declare global {
   interface Window {

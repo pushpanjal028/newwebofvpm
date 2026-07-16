@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Lock, Mail, Key, ShieldCheck, AlertCircle, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { loginUser } from "../api";
+import { loginUser } from "../../api";
 
 export default function Login() {
   const navigate = useNavigate();
