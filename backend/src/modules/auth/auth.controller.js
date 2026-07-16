@@ -24,7 +24,7 @@ export const sendOtp = async (req, res) => {
 
 export const registerUser = async (req, res) => {
   try {
-    const { name, email, password, phone, organization, state, city, designation, otp } = req.body;
+    const { name, email, password, phone, organization, state, city, designation, otp, photo, documentProof } = req.body;
     const result = await registerUserService({
       name,
       email,
@@ -35,7 +35,8 @@ export const registerUser = async (req, res) => {
       city,
       designation,
       otp,
-      files: req.files,
+      photo,
+      documentProof,
     });
     res.json(result);
   } catch (err) {

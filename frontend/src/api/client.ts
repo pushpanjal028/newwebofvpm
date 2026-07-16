@@ -49,13 +49,28 @@ export const getUploadUrl = (relativePath: string) => {
   if (!relativePath) return "";
   if (relativePath.startsWith("http")) return relativePath;
   
-  let cleanPath = relativePath.trim();
-  if (!cleanPath.toLowerCase().includes("uploads")) {
-    cleanPath = cleanPath.startsWith("/") ? `/uploads${cleanPath}` : `/uploads/${cleanPath}`;
-  } else {
-    cleanPath = cleanPath.startsWith("/") ? cleanPath : `/${cleanPath}`;
+  let key = relativePath.trim();
+  if (key.startsWith("/")) {
+    key = key.substring(1);
   }
   
-  const CLEAN_BASE = BASE_URL.endsWith("/api") ? BASE_URL.slice(0, -4) : BASE_URL;
-  return `${CLEAN_BASE}${cleanPath}`;
+  if (!key.toLowerCase().startsWith("uploads/")) {
+    key = `uploads/${key}`;
+  }
+  
+  return `${BASE_URL}/uploads/view/${key}`;
+};
+
+export const uploadFileToS3 = async (presignedUrl: string, file: File) => {
+  const res = await fetch(presignedUrl, {
+    method: "PUT",
+    body: file,
+    headers: {
+      "Content-Type": file.type,
+    },
+  });
+  if (!res.ok) {
+    throw new Error(`S3 upload failed: ${res.statusText}`);
+  }
+  return true;
 };

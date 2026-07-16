@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { UserPlus, User, Mail, Phone, Building, Map, Key, Image, FileText, Briefcase, ArrowRight, ShieldCheck, AlertCircle, X, Loader2, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { registerUser, sendOtp } from "../../api";
+import { registerUser, sendOtp, getPresignedUploadUrl, uploadFileToS3 } from "../../api";
 
 export default function Registration() {
   const navigate = useNavigate();
@@ -92,20 +92,30 @@ export default function Registration() {
     setError("");
 
     try {
-      const data = new FormData();
-      data.append("name", formData.fullName);
-      data.append("email", formData.email);
-      data.append("phone", formData.phone);
-      data.append("organization", formData.organization);
-      data.append("state", formData.state);
-      data.append("city", formData.city);
-      data.append("designation", formData.designation);
-      data.append("password", formData.password);
-      data.append("photo", photo!);
-      data.append("documentProof", documentProof!);
-      data.append("otp", otp);
+      // 1. Request PUT URLs and S3 Keys from backend
+      const photoPresigned = await getPresignedUploadUrl(photo!.name, photo!.type);
+      const docPresigned = await getPresignedUploadUrl(documentProof!.name, documentProof!.type);
 
-      await registerUser(data);
+      // 2. Upload both files directly to S3
+      await uploadFileToS3(photoPresigned.uploadUrl, photo!);
+      await uploadFileToS3(docPresigned.uploadUrl, documentProof!);
+
+      // 3. Post registration data (with S3 keys) to backend as JSON
+      const payload = {
+        name: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        organization: formData.organization,
+        state: formData.state,
+        city: formData.city,
+        designation: formData.designation,
+        password: formData.password,
+        photo: photoPresigned.key,
+        documentProof: docPresigned.key,
+        otp,
+      };
+
+      await registerUser(payload);
       setSuccess(true);
       setShowOtpModal(false);
       

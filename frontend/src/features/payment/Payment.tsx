@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { CreditCard, Shield, CheckCircle, Info, Upload, AlertCircle, Building, QrCode } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
-import { submitPayment } from "../../api";
+import { submitPayment, getPresignedUploadUrl, uploadFileToS3 } from "../../api";
 
 export default function Payment() {
   const navigate = useNavigate();
@@ -50,12 +50,20 @@ export default function Payment() {
     setError("");
 
     try {
-      const data = new FormData();
-      data.append("emailOrPhone", emailOrPhone);
-      data.append("transactionId", transactionId);
-      data.append("paymentScreenshot", screenshot);
+      // 1. Get PUT URL and S3 Key from backend
+      const presigned = await getPresignedUploadUrl(screenshot.name, screenshot.type);
 
-      await submitPayment(data);
+      // 2. Upload file directly to S3
+      await uploadFileToS3(presigned.uploadUrl, screenshot);
+
+      // 3. Submit reference and S3 key to backend as JSON
+      const payload = {
+        emailOrPhone,
+        transactionId,
+        paymentScreenshot: presigned.key,
+      };
+
+      await submitPayment(payload);
       setSuccess(true);
 
       // Clear fields

@@ -65,7 +65,8 @@ export const registerUserService = async ({
   city,
   designation,
   otp,
-  files
+  photo,
+  documentProof
 }) => {
   if (!name || !email || !password || !phone || !state || !city || !designation || !otp) {
     throw new Error("All required fields and OTP verification code must be provided.");
@@ -87,18 +88,6 @@ export const registerUserService = async ({
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  let photoPath = "";
-  let documentProofPath = "";
-
-  if (files) {
-    if (files.photo && files.photo[0]) {
-      photoPath = `/uploads/${files.photo[0].filename}`;
-    }
-    if (files.documentProof && files.documentProof[0]) {
-      documentProofPath = `/uploads/${files.documentProof[0].filename}`;
-    }
-  }
-
   const newUser = new User({
     name,
     email,
@@ -108,8 +97,8 @@ export const registerUserService = async ({
     state,
     city,
     designation,
-    photo: photoPath,
-    documentProof: documentProofPath,
+    photo: photo || "",
+    documentProof: documentProof || "",
     paymentStatus: "pending",
     approvalStatus: "pending",
   });

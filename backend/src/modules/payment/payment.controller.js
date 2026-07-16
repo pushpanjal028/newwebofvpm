@@ -2,8 +2,8 @@ import { submitPaymentReceiptService } from "./payment.service.js";
 
 export const submitPaymentReceipt = async (req, res) => {
   try {
-    const { emailOrPhone, transactionId } = req.body;
-    const result = await submitPaymentReceiptService(emailOrPhone, transactionId, req.file);
+    const { emailOrPhone, transactionId, paymentScreenshot } = req.body;
+    const result = await submitPaymentReceiptService(emailOrPhone, transactionId, paymentScreenshot);
     res.json(result);
   } catch (err) {
     console.error("❌ Payment submit controller error:", err);

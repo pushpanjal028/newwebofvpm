@@ -4,6 +4,6 @@ import upload from "../../middlewares/upload.js";
 
 const router = express.Router();
 
-router.post("/submit", upload.single("paymentScreenshot"), submitPaymentReceipt);
+router.post("/submit", submitPaymentReceipt);
 
 export default router;

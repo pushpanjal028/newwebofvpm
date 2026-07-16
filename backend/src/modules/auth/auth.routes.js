@@ -41,15 +41,7 @@ const contactLimiter = rateLimit({
 
 // Enpoints
 router.post("/send-otp", otpLimiter, sendOtp);
-router.post(
-  "/register",
-  registerLimiter,
-  upload.fields([
-    { name: "photo", maxCount: 1 },
-    { name: "documentProof", maxCount: 1 },
-  ]),
-  registerUser
-);
+router.post("/register", registerLimiter, registerUser);
 router.post("/login", loginLimiter, loginUser);
 router.post("/contact", contactLimiter, submitContactForm);
 

@@ -1,11 +1,11 @@
 import User from "../../models/User.js";
 
-export const submitPaymentReceiptService = async (emailOrPhone, transactionId, file) => {
+export const submitPaymentReceiptService = async (emailOrPhone, transactionId, paymentScreenshot) => {
   if (!emailOrPhone || !transactionId) {
     throw new Error("Email or Phone and Transaction/Reference ID are required.");
   }
 
-  if (!file) {
+  if (!paymentScreenshot) {
     throw new Error("Payment screenshot is required.");
   }
 
@@ -25,7 +25,7 @@ export const submitPaymentReceiptService = async (emailOrPhone, transactionId, f
   }
 
   user.paymentReferenceId = transactionId;
-  user.paymentScreenshot = `/uploads/${file.filename}`;
+  user.paymentScreenshot = paymentScreenshot;
   user.paymentStatus = "verification_pending";
 
   await user.save();

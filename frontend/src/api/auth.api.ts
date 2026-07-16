@@ -13,10 +13,26 @@ export const sendOtp = async (email: string) => {
   return data;
 };
 
-export const registerUser = async (formData: FormData) => {
+export const getPresignedUploadUrl = async (filename: string, fileType: string): Promise<{ uploadUrl: string; key: string }> => {
+  const res = await fetch(`${BASE_URL}/uploads/presigned-url`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ filename, fileType }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to generate presigned S3 URL");
+  }
+  return data;
+};
+
+export const registerUser = async (registrationData: any) => {
   const res = await fetch(`${BASE_URL}/auth/register`, {
     method: "POST",
-    body: formData,
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(registrationData),
   });
   const data = await res.json();
   if (!res.ok) {
