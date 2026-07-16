@@ -42,8 +42,8 @@ app.use(
 
 app.use(express.json());
 
-// Serve uploads directory statically (pointing to backend/uploads)
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+// Serve uploads directory statically (pointing to root uploads/)
+app.use("/uploads", express.static(path.join(__dirname, "../../uploads")));
 
 // Mount routes
 app.use("/api/auth", authRouter);
