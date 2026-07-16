@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { CreditCard, Shield, CheckCircle, Info, Upload, AlertCircle, Building, QrCode } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { QRCodeSVG } from "qrcode.react";
 import { submitPayment, getPresignedUploadUrl, uploadFileToS3 } from "../../api";
+import qrCodeImage from "../../assets/qr code.jpeg";
 
 export default function Payment() {
   const navigate = useNavigate();
@@ -81,10 +81,8 @@ export default function Payment() {
     }
   };
 
-  // UPI Link payload for QR code: Standard UPI payment format
+  // UPI ID for display
   const upiId = "geetashukla486@okicici";
-  const orgName = "Geeta Shukla";
-  const upiLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(orgName)}&am=100&cu=INR`;
 
   return (
     <div className="py-24 bg-slate-50 dark:bg-[#030712] text-slate-800 dark:text-slate-100 transition-colors duration-300 min-h-screen relative overflow-hidden flex items-center justify-center">
@@ -125,8 +123,8 @@ export default function Payment() {
             {/* UPI & QR Section */}
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center bg-amber-50/40 border border-amber-200/50 p-4 rounded-2xl">
               <div className="sm:col-span-4 flex justify-center">
-                <div className="p-2.5 bg-white border rounded-xl shadow-md">
-                  <QRCodeSVG value={upiLink} size={100} level="M" includeMargin={false} />
+                <div className="p-1 bg-white border rounded-xl shadow-md overflow-hidden">
+                  <img src={qrCodeImage} alt="UPI QR Code" className="w-[110px] h-[110px] object-contain rounded-lg" />
                 </div>
               </div>
               <div className="sm:col-span-8 space-y-1.5 text-center sm:text-left">
