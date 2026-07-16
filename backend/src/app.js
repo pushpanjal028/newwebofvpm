@@ -53,4 +53,12 @@ app.use("/api/admin", adminRouter);
 app.use("/api/members", memberRouter);
 app.use("/api/uploads", uploadRouter);
 
+// Custom JSON global error handler
+app.use((err, req, res, next) => {
+  console.error("❌ Uncaught application error:", err);
+  res.status(err.status || 500).json({
+    message: err.message || "Internal Server Error",
+  });
+});
+
 export default app;
