@@ -9,10 +9,10 @@ import paymentRouter from "./modules/payment/index.js";
 import adminRouter from "./modules/admin/index.js";
 import memberRouter from "./modules/member/index.js";
 
-dotenv.config();
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, "../.env") });
 
 const app = express();
 
