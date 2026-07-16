@@ -36,9 +36,8 @@ router.post("/presigned-url", async (req, res) => {
 });
 
 // Secure GET Temporary URL redirect with local fallback
-router.get("/view/*", async (req, res) => {
+router.get(/^\/view\/(.+)$/, async (req, res) => {
   try {
-    // req.params[0] captures wildcard match after /view/
     const key = req.params[0];
 
     if (!key) {
