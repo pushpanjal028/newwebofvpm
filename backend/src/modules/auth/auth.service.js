@@ -211,18 +211,20 @@ export const getCurrentProfileService = async (userId) => {
   return user;
 };
 
-export const updateProfileService = async (userId, { name, phone, organization, state, city, designation }) => {
+export const updateProfileService = async (userId, { name, phone, organization, state, city, designation, photo, documentProof }) => {
   const user = await User.findById(userId);
   if (!user) {
     throw new Error("User not found");
   }
 
-  user.name = name || user.name;
-  user.phone = phone || user.phone;
-  user.organization = organization !== undefined ? organization : user.organization;
-  user.state = state || user.state;
-  user.city = city || user.city;
-  user.designation = designation || user.designation;
+  if (name !== undefined) user.name = name;
+  if (phone !== undefined) user.phone = phone;
+  if (organization !== undefined) user.organization = organization;
+  if (state !== undefined) user.state = state;
+  if (city !== undefined) user.city = city;
+  if (designation !== undefined) user.designation = designation;
+  if (photo !== undefined) user.photo = photo;
+  if (documentProof !== undefined) user.documentProof = documentProof;
 
   await user.save();
 
@@ -230,6 +232,7 @@ export const updateProfileService = async (userId, { name, phone, organization, 
     message: "Profile updated successfully",
     user: {
       id: user._id,
+      _id: user._id,
       name: user.name,
       email: user.email,
       isAdmin: user.isAdmin,
@@ -238,6 +241,13 @@ export const updateProfileService = async (userId, { name, phone, organization, 
       state: user.state,
       city: user.city,
       designation: user.designation,
+      photo: user.photo,
+      documentProof: user.documentProof,
+      paymentStatus: user.paymentStatus,
+      approvalStatus: user.approvalStatus,
+      membershipId: user.membershipId,
+      issueDate: user.issueDate,
+      expiryDate: user.expiryDate,
     }
   };
 };
@@ -262,3 +272,12 @@ export const changePasswordService = async (userId, oldPassword, newPassword) =>
 
   return { message: "Password updated successfully" };
 };
+
+export const deleteProfileService = async (userId) => {
+  const user = await User.findByIdAndDelete(userId);
+  if (!user) {
+    throw new Error("User profile not found or already deleted");
+  }
+  return { message: "User account and profile deleted successfully" };
+};
+

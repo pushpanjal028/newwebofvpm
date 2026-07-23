@@ -8,6 +8,7 @@ import {
   getCurrentProfile,
   updateProfile,
   changePassword,
+  deleteProfile,
 } from "./auth.controller.js";
 import auth from "../../middlewares/auth.js";
 import upload from "../../middlewares/upload.js";
@@ -48,6 +49,7 @@ router.post("/contact", contactLimiter, submitContactForm);
 // Protected routes
 router.get("/me", auth, getCurrentProfile);
 router.put("/profile", auth, updateProfile);
+router.delete("/profile", auth, deleteProfile);
 router.post("/change-password", auth, changePassword);
 
 export default router;

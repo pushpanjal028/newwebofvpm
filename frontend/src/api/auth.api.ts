@@ -81,3 +81,10 @@ export const changeMemberPassword = async (passwordData: any) => {
     body: JSON.stringify(passwordData),
   });
 };
+
+export const deleteMemberProfile = async () => {
+  return await fetchWithAuth("/auth/profile", {
+    method: "DELETE",
+  });
+};
+

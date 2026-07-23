@@ -1,12 +1,21 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   User, ShieldCheck, Clock, AlertCircle, Printer, FileText,
-  MapPin, Key, Edit, LogOut, CheckCircle, Eye, Loader2, X
+  MapPin, Key, Edit, LogOut, CheckCircle, Eye, Loader2, X, Download, Trash2, Upload
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
-import { getCurrentMemberProfile, updateMemberProfile, changeMemberPassword, getUploadUrl, clearAuth } from "../../api";
+import {
+  getCurrentMemberProfile,
+  updateMemberProfile,
+  changeMemberPassword,
+  deleteMemberProfile,
+  getUploadUrl,
+  clearAuth,
+  getPresignedUploadUrl,
+  uploadFileToS3
+} from "../../api";
 import Logo from "../../assets/logo perfect.png";
 
 interface ProfileData {
@@ -29,10 +38,12 @@ interface ProfileData {
 
 export default function UserDashboard() {
   const navigate = useNavigate();
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [cardDownloading, setCardDownloading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -49,6 +60,11 @@ export default function UserDashboard() {
     designation: "",
   });
 
+  // Photo & Document upload state
+  const [newPhotoFile, setNewPhotoFile] = useState<File | null>(null);
+  const [newDocFile, setNewDocFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
   // Password fields
   const [passForm, setPassForm] = useState({
     oldPassword: "",
@@ -56,8 +72,10 @@ export default function UserDashboard() {
     confirmPassword: "",
   });
 
-  // Modal file view
+  // Modal file view & Delete modal
   const [viewingFileUrl, setViewingFileUrl] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const fetchProfileData = async () => {
     setLoading(true);
@@ -67,7 +85,7 @@ export default function UserDashboard() {
       setProfile(data);
       localStorage.setItem("vpm_user", JSON.stringify(data));
       setEditForm({
-        name: data.name,
+        name: data.name || "",
         phone: data.phone || "",
         organization: data.organization || "",
         state: data.state || "",
@@ -77,7 +95,6 @@ export default function UserDashboard() {
     } catch (err: any) {
       console.error("❌ Profile fetch error:", err);
       setError(err.message || "Session expired or failed to load profile.");
-      // If unauthorized, logout
       if (err.message?.toLowerCase().includes("denied") || err.message?.toLowerCase().includes("token")) {
         handleLogout();
       }
@@ -92,9 +109,22 @@ export default function UserDashboard() {
 
   const handleLogout = () => {
     clearAuth();
-    // Dispatch storage event to update Navbar
     window.dispatchEvent(new Event("storage"));
     navigate("/login");
+  };
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setNewPhotoFile(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleDocChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setNewDocFile(e.target.files[0]);
+    }
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
@@ -103,9 +133,35 @@ export default function UserDashboard() {
     setError("");
     setSuccess("");
     try {
-      const res = await updateMemberProfile(editForm);
+      let photoKey = profile?.photo;
+      let docKey = profile?.documentProof;
+
+      // Upload photo if new file selected
+      if (newPhotoFile) {
+        const photoPresigned = await getPresignedUploadUrl(newPhotoFile.name, newPhotoFile.type);
+        await uploadFileToS3(photoPresigned.uploadUrl, newPhotoFile);
+        photoKey = photoPresigned.key;
+      }
+
+      // Upload document proof if new file selected
+      if (newDocFile) {
+        const docPresigned = await getPresignedUploadUrl(newDocFile.name, newDocFile.type);
+        await uploadFileToS3(docPresigned.uploadUrl, newDocFile);
+        docKey = docPresigned.key;
+      }
+
+      const res = await updateMemberProfile({
+        ...editForm,
+        photo: photoKey,
+        documentProof: docKey,
+      });
+
       setProfile((prev) => (prev ? { ...prev, ...res.user } : null));
-      setSuccess("Profile details updated successfully.");
+      localStorage.setItem("vpm_user", JSON.stringify(res.user));
+      setSuccess("Profile details and documents updated successfully.");
+      setNewPhotoFile(null);
+      setNewDocFile(null);
+      setPhotoPreview(null);
     } catch (err: any) {
       setError(err.message || "Failed to update profile details.");
     } finally {
@@ -137,8 +193,49 @@ export default function UserDashboard() {
     }
   };
 
+  const handleDeleteProfile = async () => {
+    setDeleteLoading(true);
+    setError("");
+    try {
+      await deleteMemberProfile();
+      clearAuth();
+      window.dispatchEvent(new Event("storage"));
+      navigate("/login");
+    } catch (err: any) {
+      setError(err.message || "Failed to delete user profile account.");
+      setShowDeleteModal(false);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadCard = async () => {
+    if (!cardRef.current) return;
+    setCardDownloading(true);
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const canvas = await html2canvas(cardRef.current, {
+        scale: 3,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+      });
+      const imageUri = canvas.toDataURL("image/png", 1.0);
+      const link = document.createElement("a");
+      link.download = `${profile?.membershipId || "VPM_Member"}_ID_Card.png`;
+      link.href = imageUri;
+      link.click();
+    } catch (err) {
+      console.error("❌ Card download failed:", err);
+      alert("Could not generate image file. Please use the Print / Save PDF button.");
+    } finally {
+      setCardDownloading(false);
+    }
   };
 
   const formatDate = (dateStr?: string) => {
@@ -186,7 +283,7 @@ export default function UserDashboard() {
                   Journalist Dashboard
                 </h1>
                 <p className="text-xs text-slate-500 mt-1">
-                  Manage your credential profiles, review status codes, and download active ID cards.
+                  Manage your credential profile, update credentials, and download official ID cards.
                 </p>
               </div>
               
@@ -387,23 +484,43 @@ export default function UserDashboard() {
                         <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
                           <ShieldCheck className="h-4.5 w-4.5 text-green-600 fill-green-50" /> Official credentials
                         </span>
-                        <button
-                          onClick={handlePrint}
-                          className="flex items-center gap-1 bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 py-2 rounded-xl text-xs font-black transition-all shadow-md"
-                        >
-                          <Printer className="h-3.5 w-3.5" /> Print / Download Card
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={handleDownloadCard}
+                            disabled={cardDownloading}
+                            className="flex items-center gap-1 bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-xl text-xs font-black transition-all shadow-md disabled:opacity-50"
+                          >
+                            {cardDownloading ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Download className="h-3.5 w-3.5 text-amber-400" />
+                            )}
+                            HD PNG
+                          </button>
+                          <button
+                            onClick={handlePrint}
+                            className="flex items-center gap-1 bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 py-1.5 rounded-xl text-xs font-black transition-all shadow-md"
+                          >
+                            <Printer className="h-3.5 w-3.5" /> Print/PDF
+                          </button>
+                        </div>
                       </div>
 
-                      {/* Printable ID Card (Uses same card design system) */}
+                      {/* Printable ID Card */}
                       <div
                         id="vpm-id-card-print-target"
+                        ref={cardRef}
                         className="w-full max-w-[380px] aspect-[1/1.58] bg-white border-2 border-slate-350 rounded-3xl shadow-2xl overflow-hidden flex flex-col justify-between p-6 relative select-none"
                       >
                         <div className="absolute top-0 left-0 right-0 h-[8px] bg-gradient-to-r from-amber-500 via-indigo-600 to-amber-400" />
 
                         <div className="flex items-center gap-2 border-b pb-4 mt-2">
-                          <img src={Logo} alt="VPM Logo" className="h-12 w-12 object-contain bg-white rounded-full p-0.5 border" />
+                          <img
+                            src={Logo}
+                            alt="VPM Logo"
+                            crossOrigin="anonymous"
+                            className="h-12 w-12 object-contain bg-white rounded-full p-0.5 border"
+                          />
                           <div className="min-w-0">
                             <h3 className="text-xs font-black text-slate-950 uppercase tracking-wider leading-none">Vishwa Patrakar</h3>
                             <h4 className="text-[10px] font-black text-amber-600 uppercase tracking-widest leading-none mt-1">Mahasangh</h4>
@@ -411,13 +528,14 @@ export default function UserDashboard() {
                           </div>
                         </div>
 
-                        <div className="flex-grow flex flex-col items-center justify-center py-5 space-y-3">
-                          <div className="relative">
-                            <div className="h-28 w-28 rounded-2xl overflow-hidden border-2 border-amber-500/80 shadow-md">
+                        <div className="flex-grow flex flex-col items-center justify-center py-3 space-y-3 min-h-0">
+                          <div className="relative flex-shrink-0">
+                            <div className="h-24 w-24 rounded-2xl overflow-hidden border-2 border-amber-500/80 shadow-md">
                               {profile.photo ? (
                                 <img
                                   src={getUploadUrl(profile.photo)}
                                   alt={profile.name}
+                                  crossOrigin="anonymous"
                                   className="h-full w-full object-cover"
                                 />
                               ) : (
@@ -426,22 +544,24 @@ export default function UserDashboard() {
                                 </span>
                               )}
                             </div>
-                            <div className="absolute -bottom-2 -right-2 bg-green-600 text-white rounded-full p-1 border-2 border-white shadow-md">
+                            <div className="absolute -bottom-1 -right-1 bg-green-600 text-white rounded-full p-1 border-2 border-white shadow-md">
                               <ShieldCheck className="h-4 w-4 fill-green-600" />
                             </div>
                           </div>
 
-                          <div className="text-center space-y-1 w-full px-2">
-                            <h2 className="text-base font-black text-slate-950 uppercase tracking-wide leading-tight truncate">
+                          <div className="text-center space-y-1 w-full px-2 overflow-visible">
+                            <h2 className="text-base font-black text-slate-950 uppercase tracking-wide leading-snug py-0.5">
                               {profile.name}
                             </h2>
-                            <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest leading-none">
+                            <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wider leading-snug py-0.5">
                               {profile.designation}
                             </p>
-                            <p className="text-[10px] text-slate-500 truncate mt-0.5">
-                              {profile.organization || "Independent Press Correspondent"}
-                            </p>
-                            <p className="text-[9px] text-slate-450 uppercase tracking-wider font-bold">
+                            {profile.organization && (
+                              <p className="text-[10px] font-semibold text-slate-600 leading-snug">
+                                {profile.organization}
+                              </p>
+                            )}
+                            <p className="text-[9px] text-slate-500 uppercase tracking-wider font-bold pt-0.5">
                               {profile.city}, {profile.state}
                             </p>
                           </div>
@@ -488,32 +608,33 @@ export default function UserDashboard() {
               /* TAB: EDIT SETTINGS (hidden on print) */
               <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start print:hidden">
                 
-                {/* EDIT PROFILE DETAILS */}
-                <form onSubmit={handleEditSubmit} className="md:col-span-7 bg-white border rounded-3xl p-6 md:p-8 space-y-4 shadow-sm">
+                {/* EDIT PROFILE DETAILS & DOCUMENTS */}
+                <form onSubmit={handleEditSubmit} className="md:col-span-7 bg-white border rounded-3xl p-6 md:p-8 space-y-6 shadow-sm">
                   <h3 className="text-lg font-black text-slate-900 border-b pb-3 mb-2 flex items-center gap-1.5">
-                    <User className="h-5 w-5 text-amber-500" /> Update Member Information
+                    <User className="h-5 w-5 text-amber-500" /> Update Member Information & Documents
                   </h3>
                   
+                  {/* Text Fields */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Name</label>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Full Name</label>
                       <input
                         type="text"
                         required
                         value={editForm.name}
                         onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                        className="w-full bg-slate-50 border rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-800"
+                        className="w-full bg-slate-50 border rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-800 font-medium"
                       />
                     </div>
                     
                     <div className="space-y-1">
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Phone</label>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Phone Number</label>
                       <input
                         type="text"
                         required
                         value={editForm.phone}
                         onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                        className="w-full bg-slate-50 border rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-800"
+                        className="w-full bg-slate-50 border rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-800 font-medium"
                       />
                     </div>
                     
@@ -524,7 +645,7 @@ export default function UserDashboard() {
                         required
                         value={editForm.designation}
                         onChange={(e) => setEditForm({ ...editForm, designation: e.target.value })}
-                        className="w-full bg-slate-50 border rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-800"
+                        className="w-full bg-slate-50 border rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-800 font-medium"
                       />
                     </div>
                     
@@ -534,7 +655,7 @@ export default function UserDashboard() {
                         type="text"
                         value={editForm.organization}
                         onChange={(e) => setEditForm({ ...editForm, organization: e.target.value })}
-                        className="w-full bg-slate-50 border rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-800"
+                        className="w-full bg-slate-50 border rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-800 font-medium"
                       />
                     </div>
                     
@@ -545,7 +666,7 @@ export default function UserDashboard() {
                         required
                         value={editForm.state}
                         onChange={(e) => setEditForm({ ...editForm, state: e.target.value })}
-                        className="w-full bg-slate-50 border rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-800"
+                        className="w-full bg-slate-50 border rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-800 font-medium"
                       />
                     </div>
                     
@@ -556,70 +677,134 @@ export default function UserDashboard() {
                         required
                         value={editForm.city}
                         onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
-                        className="w-full bg-slate-50 border rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-800"
+                        className="w-full bg-slate-50 border rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-800 font-medium"
                       />
+                    </div>
+                  </div>
+
+                  {/* Document & Photo Uploaders */}
+                  <div className="border-t pt-4 space-y-4">
+                    <h4 className="text-xs font-black uppercase text-slate-500 tracking-wider">Update Profile Attachments</h4>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Photo Upload */}
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Profile Photo</label>
+                        <div className="flex items-center gap-3">
+                          <div className="h-12 w-12 rounded-xl border bg-slate-100 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                            {photoPreview ? (
+                              <img src={photoPreview} alt="Preview" className="h-full w-full object-cover" />
+                            ) : profile.photo ? (
+                              <img src={getUploadUrl(profile.photo)} alt="Current" className="h-full w-full object-cover" />
+                            ) : (
+                              <User className="h-6 w-6 text-slate-400" />
+                            )}
+                          </div>
+                          <label className="cursor-pointer inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border">
+                            <Upload className="h-3.5 w-3.5" />
+                            {newPhotoFile ? newPhotoFile.name.slice(0, 12) + "..." : "Change Photo"}
+                            <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Identity Document Proof Upload */}
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">ID Document Proof</label>
+                        <div className="flex items-center gap-3">
+                          <label className="cursor-pointer inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border">
+                            <Upload className="h-3.5 w-3.5" />
+                            {newDocFile ? newDocFile.name.slice(0, 15) + "..." : "Update Document"}
+                            <input type="file" accept="image/*,.pdf" className="hidden" onChange={handleDocChange} />
+                          </label>
+                          {profile.documentProof && !newDocFile && (
+                            <span className="text-[10px] text-green-600 font-bold flex items-center gap-0.5">
+                              <CheckCircle className="h-3 w-3" /> Uploaded
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
                   <button
                     type="submit"
                     disabled={actionLoading}
-                    className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow shadow-slate-950/20 self-start block"
+                    className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow shadow-slate-950/20 block disabled:opacity-50"
                   >
-                    {actionLoading ? "Saving Changes..." : "Save Profile Info"}
+                    {actionLoading ? "Saving Changes..." : "Save Profile & Attachments"}
                   </button>
                 </form>
 
-                {/* CHANGE PASSWORD */}
-                <form onSubmit={handlePasswordSubmit} className="md:col-span-5 bg-white border rounded-3xl p-6 md:p-8 space-y-4 shadow-sm">
-                  <h3 className="text-lg font-black text-slate-900 border-b pb-3 mb-2 flex items-center gap-1.5">
-                    <Key className="h-5 w-5 text-amber-500" /> Change Password
-                  </h3>
+                {/* RIGHT COLUMN: CHANGE PASSWORD & DELETE ACCOUNT */}
+                <div className="md:col-span-5 space-y-6">
+                  {/* CHANGE PASSWORD */}
+                  <form onSubmit={handlePasswordSubmit} className="bg-white border rounded-3xl p-6 md:p-8 space-y-4 shadow-sm">
+                    <h3 className="text-lg font-black text-slate-900 border-b pb-3 mb-2 flex items-center gap-1.5">
+                      <Key className="h-5 w-5 text-amber-500" /> Change Password
+                    </h3>
 
-                  <div className="space-y-1">
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Current Password</label>
-                    <input
-                      type="password"
-                      required
-                      value={passForm.oldPassword}
-                      onChange={(e) => setPassForm({ ...passForm, oldPassword: e.target.value })}
-                      className="w-full bg-slate-50 border rounded-xl py-2.5 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-800"
-                      placeholder="Enter current password"
-                    />
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Current Password</label>
+                      <input
+                        type="password"
+                        required
+                        value={passForm.oldPassword}
+                        onChange={(e) => setPassForm({ ...passForm, oldPassword: e.target.value })}
+                        className="w-full bg-slate-50 border rounded-xl py-2.5 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-800"
+                        placeholder="Enter current password"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">New Password</label>
+                      <input
+                        type="password"
+                        required
+                        value={passForm.newPassword}
+                        onChange={(e) => setPassForm({ ...passForm, newPassword: e.target.value })}
+                        className="w-full bg-slate-50 border rounded-xl py-2.5 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-800"
+                        placeholder="Enter new password"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Confirm Password</label>
+                      <input
+                        type="password"
+                        required
+                        value={passForm.confirmPassword}
+                        onChange={(e) => setPassForm({ ...passForm, confirmPassword: e.target.value })}
+                        className="w-full bg-slate-50 border rounded-xl py-2.5 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-800"
+                        placeholder="Re-type new password"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={actionLoading}
+                      className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow disabled:opacity-50"
+                    >
+                      {actionLoading ? "Updating Password..." : "Update Password"}
+                    </button>
+                  </form>
+
+                  {/* DELETE ACCOUNT / PROFILE (CRUD DELETE OPERATION) */}
+                  <div className="bg-red-50/60 border border-red-200 rounded-3xl p-6 space-y-3">
+                    <h4 className="text-sm font-black text-red-900 flex items-center gap-1.5">
+                      <Trash2 className="h-4 w-4 text-red-600" /> Delete Profile & Account
+                    </h4>
+                    <p className="text-xs text-red-700/80 leading-relaxed">
+                      Permanently delete your user credentials and membership application profile from the registry.
+                    </p>
+                    <button
+                      onClick={() => setShowDeleteModal(true)}
+                      className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow"
+                    >
+                      Delete My Account
+                    </button>
                   </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">New Password</label>
-                    <input
-                      type="password"
-                      required
-                      value={passForm.newPassword}
-                      onChange={(e) => setPassForm({ ...passForm, newPassword: e.target.value })}
-                      className="w-full bg-slate-50 border rounded-xl py-2.5 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-800"
-                      placeholder="Enter new password"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Confirm Password</label>
-                    <input
-                      type="password"
-                      required
-                      value={passForm.confirmPassword}
-                      onChange={(e) => setPassForm({ ...passForm, confirmPassword: e.target.value })}
-                      className="w-full bg-slate-50 border rounded-xl py-2.5 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-800"
-                      placeholder="Re-type new password"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={actionLoading}
-                    className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow"
-                  >
-                    {actionLoading ? "Updating Password..." : "Update Password"}
-                  </button>
-                </form>
+                </div>
 
               </div>
             )}
@@ -627,22 +812,35 @@ export default function UserDashboard() {
             {/* 💳 Print CSS Injections */}
             <style dangerouslySetInnerHTML={{ __html: `
               @media print {
+                @page {
+                  size: A4 portrait;
+                  margin: 15mm;
+                }
+                body {
+                  background: #ffffff !important;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
+                }
                 body * {
-                  visibility: hidden;
+                  visibility: hidden !important;
                 }
                 #vpm-id-card-print-target, #vpm-id-card-print-target * {
-                  visibility: visible;
+                  visibility: visible !important;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
                 }
                 #vpm-id-card-print-target {
-                  position: absolute;
-                  left: 50%;
-                  top: 50%;
-                  transform: translate(-50%, -50%) scale(1.15);
-                  border: none !important;
+                  position: relative !important;
+                  left: auto !important;
+                  top: auto !important;
+                  transform: none !important;
+                  margin: 40px auto !important;
+                  border: 2px solid #cbd5e1 !important;
                   box-shadow: none !important;
-                  background-color: white !important;
+                  background-color: #ffffff !important;
+                  page-break-inside: avoid;
                 }
-                nav, footer, button, .print-btn, header {
+                nav, footer, button, .print\\:hidden, header {
                   display: none !important;
                 }
               }
@@ -650,6 +848,45 @@ export default function UserDashboard() {
             
           </div>
         ) : null}
+
+        {/* MODAL: DELETE ACCOUNT CONFIRMATION */}
+        {showDeleteModal && (
+          <div
+            className="fixed inset-0 bg-[#030712]/90 backdrop-blur-sm z-50 flex items-center justify-center p-4 print:hidden"
+            onClick={() => setShowDeleteModal(false)}
+          >
+            <div
+              className="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl space-y-4 border text-slate-800"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="h-12 w-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto">
+                <Trash2 className="h-6 w-6" />
+              </div>
+              <div className="text-center space-y-1">
+                <h3 className="text-lg font-black text-slate-900">Delete Account Confirmation</h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Are you sure you want to permanently delete your member profile and membership application? This action cannot be undone.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2.5 rounded-xl transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteProfile}
+                  disabled={deleteLoading}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-2.5 rounded-xl transition-all shadow disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {deleteLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete Profile"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* MODAL: DOCUMENT FILE VIEWER */}
         {viewingFileUrl && (
@@ -691,3 +928,4 @@ export default function UserDashboard() {
     </div>
   );
 }
+

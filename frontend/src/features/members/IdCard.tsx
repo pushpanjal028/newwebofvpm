@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { Printer, ShieldCheck, AlertCircle, Loader2, ArrowLeft, Calendar } from "lucide-react";
+import { Printer, ShieldCheck, AlertCircle, Loader2, ArrowLeft, Calendar, Download } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { getPublicVerification, getUploadUrl } from "../../api";
 import Logo from "../../assets/logo perfect.png";
@@ -23,6 +23,7 @@ export default function IdCard() {
   const { membershipId } = useParams<{ membershipId: string }>();
   const [member, setMember] = useState<MemberDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState("");
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -66,6 +67,31 @@ export default function IdCard() {
     window.print();
   };
 
+  const handleDownloadCard = async () => {
+    if (!cardRef.current) return;
+    setDownloading(true);
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const canvas = await html2canvas(cardRef.current, {
+        scale: 3,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+      });
+      const imageUri = canvas.toDataURL("image/png", 1.0);
+      const link = document.createElement("a");
+      link.download = `${member?.membershipId || "VPM_Member"}_ID_Card.png`;
+      link.href = imageUri;
+      link.click();
+    } catch (err) {
+      console.error("❌ Card download failed:", err);
+      alert("Could not generate image file. Please use the Print button to save as PDF.");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const verificationUrl = `${window.location.origin}/verify/${membershipId}`;
 
   // Helper date formatting
@@ -85,7 +111,7 @@ export default function IdCard() {
 
       <div className="max-w-2xl w-full mx-auto px-4 relative z-10 print:px-0">
         
-        {/* Navigation Action Back (hidden on print) */}
+        {/* Navigation Action Back & Actions (hidden on print) */}
         <div className="flex justify-between items-center mb-6 print:hidden">
           <Link
             to="/members"
@@ -94,12 +120,26 @@ export default function IdCard() {
             <ArrowLeft className="h-4 w-4" /> Back to Registry
           </Link>
           {member && (
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 py-2 rounded-xl text-xs font-black transition-all shadow-md"
-            >
-              <Printer className="h-4 w-4" /> Print / Download ID
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleDownloadCard}
+                disabled={downloading}
+                className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-black transition-all shadow-md disabled:opacity-50"
+              >
+                {downloading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 text-amber-400" />
+                )}
+                {downloading ? "Generating..." : "Download HD PNG"}
+              </button>
+              <button
+                onClick={handlePrint}
+                className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 py-2 rounded-xl text-xs font-black transition-all shadow-md"
+              >
+                <Printer className="h-4 w-4" /> Print / Save PDF
+              </button>
+            </div>
           )}
         </div>
 
@@ -123,25 +163,38 @@ export default function IdCard() {
         ) : member ? (
           <div className="flex flex-col items-center gap-6">
             
-            {/* 💳 Print Media CSS Overrides (injected dynamically) */}
+            {/* 💳 High Precision Print Media CSS */}
             <style dangerouslySetInnerHTML={{ __html: `
               @media print {
+                @page {
+                  size: A4 portrait;
+                  margin: 15mm;
+                }
+                body {
+                  background: #ffffff !important;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
+                }
                 body * {
-                  visibility: hidden;
+                  visibility: hidden !important;
                 }
                 #vpm-id-card-print-target, #vpm-id-card-print-target * {
-                  visibility: visible;
+                  visibility: visible !important;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
                 }
                 #vpm-id-card-print-target {
-                  position: absolute;
-                  left: 50%;
-                  top: 50%;
-                  transform: translate(-50%, -50%) scale(1.15);
-                  border: none !important;
+                  position: relative !important;
+                  left: auto !important;
+                  top: auto !important;
+                  transform: none !important;
+                  margin: 40px auto !important;
+                  border: 2px solid #cbd5e1 !important;
                   box-shadow: none !important;
-                  background-color: white !important;
+                  background-color: #ffffff !important;
+                  page-break-inside: avoid;
                 }
-                nav, footer, .print-btn, header {
+                nav, footer, button, header, .print\\:hidden {
                   display: none !important;
                 }
               }
@@ -158,7 +211,12 @@ export default function IdCard() {
               
               {/* Header Logo & Title */}
               <div className="flex items-center gap-2 border-b pb-4 mt-2">
-                <img src={Logo} alt="VPM Logo" className="h-12 w-12 object-contain bg-white rounded-full p-0.5 border" />
+                <img
+                  src={Logo}
+                  alt="VPM Logo"
+                  crossOrigin="anonymous"
+                  className="h-12 w-12 object-contain bg-white rounded-full p-0.5 border"
+                />
                 <div className="min-w-0">
                   <h3 className="text-xs font-black text-slate-950 uppercase tracking-wider leading-none">Vishwa Patrakar</h3>
                   <h4 className="text-[10px] font-black text-amber-600 uppercase tracking-widest leading-none mt-1">Mahasangh</h4>
@@ -167,15 +225,16 @@ export default function IdCard() {
               </div>
 
               {/* Body: Photo & Credentials */}
-              <div className="flex-grow flex flex-col items-center justify-center py-6 space-y-4">
+              <div className="flex-grow flex flex-col items-center justify-center py-3 space-y-3 min-h-0">
                 
                 {/* Photo container */}
-                <div className="relative">
-                  <div className="h-28 w-28 rounded-2xl overflow-hidden border-2 border-amber-500/80 shadow-md">
+                <div className="relative flex-shrink-0">
+                  <div className="h-24 w-24 rounded-2xl overflow-hidden border-2 border-amber-500/80 shadow-md">
                     {member.photo ? (
                       <img
                         src={getUploadUrl(member.photo)}
                         alt={member.name}
+                        crossOrigin="anonymous"
                         className="h-full w-full object-cover"
                       />
                     ) : (
@@ -185,23 +244,25 @@ export default function IdCard() {
                     )}
                   </div>
                   {/* Verified badge watermark */}
-                  <div className="absolute -bottom-2 -right-2 bg-green-600 text-white rounded-full p-1 border-2 border-white shadow-md">
+                  <div className="absolute -bottom-1 -right-1 bg-green-600 text-white rounded-full p-1 border-2 border-white shadow-md">
                     <ShieldCheck className="h-4 w-4 fill-green-600" />
                   </div>
                 </div>
 
                 {/* Member Text Info */}
-                <div className="text-center space-y-1 w-full px-2">
-                  <h2 className="text-lg font-black text-slate-950 uppercase tracking-wide leading-tight truncate">
+                <div className="text-center space-y-1 w-full px-2 overflow-visible">
+                  <h2 className="text-base font-black text-slate-950 uppercase tracking-wide leading-snug py-0.5">
                     {member.name}
                   </h2>
-                  <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest leading-none">
+                  <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wider leading-snug py-0.5">
                     {member.designation}
                   </p>
-                  <p className="text-[10px] text-slate-500 truncate mt-0.5">
-                    {member.organization || "Independent Press Correspondent"}
-                  </p>
-                  <p className="text-[9px] text-slate-450 uppercase tracking-wider font-bold">
+                  {member.organization && (
+                    <p className="text-[10px] font-semibold text-slate-600 leading-snug">
+                      {member.organization}
+                    </p>
+                  )}
+                  <p className="text-[9px] text-slate-500 uppercase tracking-wider font-bold pt-0.5">
                     {member.city}, {member.state}
                   </p>
                 </div>
@@ -236,7 +297,7 @@ export default function IdCard() {
             {/* Print Tips Info */}
             <p className="text-[10px] text-slate-500 text-center max-w-xs leading-relaxed print:hidden">
               <Calendar className="h-3.5 w-3.5 inline mr-1 text-amber-500" />
-              For best print result, ensure your browser print settings include <strong>"Background graphics"</strong>.
+              Use <strong>"Download HD PNG"</strong> to save directly as image, or <strong>"Print / Save PDF"</strong> for physical printing.
             </p>
           </div>
         ) : null}
@@ -244,3 +305,4 @@ export default function IdCard() {
     </div>
   );
 }
+

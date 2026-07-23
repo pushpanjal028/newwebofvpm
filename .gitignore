@@ -20,3 +20,4 @@ backend/*.log
 Thumbs.db
 .vscode/
 .idea/
+.env

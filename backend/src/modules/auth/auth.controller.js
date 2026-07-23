@@ -6,6 +6,7 @@ import {
   getCurrentProfileService,
   updateProfileService,
   changePasswordService,
+  deleteProfileService,
 } from "./auth.service.js";
 
 export const sendOtp = async (req, res) => {
@@ -79,7 +80,7 @@ export const getCurrentProfile = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    const { name, phone, organization, state, city, designation } = req.body;
+    const { name, phone, organization, state, city, designation, photo, documentProof } = req.body;
     const result = await updateProfileService(req.user._id, {
       name,
       phone,
@@ -87,6 +88,8 @@ export const updateProfile = async (req, res) => {
       state,
       city,
       designation,
+      photo,
+      documentProof,
     });
     res.json(result);
   } catch (err) {
@@ -105,3 +108,14 @@ export const changePassword = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+export const deleteProfile = async (req, res) => {
+  try {
+    const result = await deleteProfileService(req.user._id);
+    res.json(result);
+  } catch (err) {
+    console.error("❌ Delete profile controller error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
