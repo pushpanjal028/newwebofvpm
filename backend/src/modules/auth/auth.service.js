@@ -281,3 +281,88 @@ export const deleteProfileService = async (userId) => {
   return { message: "User account and profile deleted successfully" };
 };
 
+export const forgotPasswordSendOtpService = async (email) => {
+  if (!email) {
+    throw new Error("Email address is required.");
+  }
+
+  const existing = await User.findOne({ email });
+  if (!existing) {
+    throw new Error("No registered member account found with this email address.");
+  }
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+  await OTP.deleteMany({ email });
+
+  const otpRecord = new OTP({ email, otp });
+  await otpRecord.save();
+
+  await transporter.sendMail({
+    from: process.env.FROM_EMAIL,
+    to: email,
+    subject: `Password Reset Verification Code - Vishwa Patrakar Mahasangh`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #ffffff;">
+        <div style="text-align: center; border-bottom: 2px solid #f59e0b; padding-bottom: 15px; margin-bottom: 20px;">
+          <h2 style="color: #1e293b; margin: 0; text-transform: uppercase; letter-spacing: 1px;">Vishwa Patrakar Mahasangh</h2>
+          <p style="color: #f59e0b; margin: 5px 0 0 0; font-size: 11px; font-weight: bold; letter-spacing: 2px;">PASSWORD RECOVERY SERVICE</p>
+        </div>
+        
+        <div style="color: #334155; line-height: 1.6; font-size: 14px;">
+          <p>Hello ${existing.name},</p>
+          <p>We received a request to reset the password for your Vishwa Patrakar Mahasangh account. Please enter the following 6-digit OTP code to complete password recovery:</p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <span style="display: inline-block; font-family: monospace; font-size: 32px; font-weight: 900; color: #b45309; background-color: #fef3c7; border: 1px dashed #f59e0b; padding: 12px 30px; letter-spacing: 6px; border-radius: 8px;">${otp}</span>
+          </div>
+          
+          <p style="color: #ef4444; font-size: 12px; font-weight: bold;">⚠️ Note: This OTP is valid for 10 minutes. Do not share this code with anyone.</p>
+          <p>If you did not request a password reset, please ignore this email.</p>
+        </div>
+
+        <div style="text-align: center; border-top: 1px solid #e2e8f0; margin-top: 35px; padding-top: 15px; font-size: 11px; color: #94a3b8;">
+          <p>&copy; ${new Date().getFullYear()} Vishwa Patrakar Mahasangh. All Rights Reserved.</p>
+        </div>
+      </div>
+    `
+  });
+
+  return { message: "Password reset verification code sent to your email." };
+};
+
+export const resetPasswordWithOtpService = async (email, otp, newPassword) => {
+  if (!email || !otp || !newPassword) {
+    throw new Error("Email, verification OTP code, and new password are required.");
+  }
+
+  const otpRecord = await OTP.findOne({ email, otp });
+  if (!otpRecord) {
+    throw new Error("Invalid or expired password reset verification code (OTP).");
+  }
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw new Error("User account not found.");
+  }
+
+  user.password = await bcrypt.hash(newPassword, 10);
+  await user.save();
+
+  await OTP.deleteMany({ email });
+
+  try {
+    await transporter.sendMail({
+      from: process.env.FROM_EMAIL,
+      to: email,
+      subject: "Password Reset Successful - Vishwa Patrakar Mahasangh",
+      text: `Hello ${user.name},\n\nYour Vishwa Patrakar Mahasangh account password has been successfully reset.\n\nIf you did not perform this change, please contact support immediately.\n\nRegards,\nVPMH Team`
+    });
+  } catch (mErr) {
+    console.error("❌ Password reset confirmation email error:", mErr);
+  }
+
+  return { message: "Password reset successfully. You can now log in with your new password." };
+};
+
+

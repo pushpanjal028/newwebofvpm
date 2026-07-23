@@ -9,6 +9,8 @@ import {
   updateProfile,
   changePassword,
   deleteProfile,
+  forgotPasswordSendOtp,
+  resetPasswordWithOtp,
 } from "./auth.controller.js";
 import auth from "../../middlewares/auth.js";
 import upload from "../../middlewares/upload.js";
@@ -45,6 +47,8 @@ router.post("/send-otp", otpLimiter, sendOtp);
 router.post("/register", registerLimiter, registerUser);
 router.post("/login", loginLimiter, loginUser);
 router.post("/contact", contactLimiter, submitContactForm);
+router.post("/forgot-password/send-otp", otpLimiter, forgotPasswordSendOtp);
+router.post("/forgot-password/reset", loginLimiter, resetPasswordWithOtp);
 
 // Protected routes
 router.get("/me", auth, getCurrentProfile);
@@ -53,3 +57,4 @@ router.delete("/profile", auth, deleteProfile);
 router.post("/change-password", auth, changePassword);
 
 export default router;
+

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   User, ShieldCheck, Clock, AlertCircle, Printer, FileText,
-  MapPin, Key, Edit, LogOut, CheckCircle, Eye, Loader2, X, Download, Trash2, Upload
+  MapPin, Key, Edit, LogOut, CheckCircle, Eye, EyeOff, Loader2, X, Download, Trash2, Upload
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
@@ -71,6 +71,8 @@ export default function UserDashboard() {
     newPassword: "",
     confirmPassword: "",
   });
+  const [showPass, setShowPass] = useState(false);
+
 
   // Modal file view & Delete modal
   const [viewingFileUrl, setViewingFileUrl] = useState<string | null>(null);
@@ -747,7 +749,7 @@ export default function UserDashboard() {
                     <div className="space-y-1">
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Current Password</label>
                       <input
-                        type="password"
+                        type={showPass ? "text" : "password"}
                         required
                         value={passForm.oldPassword}
                         onChange={(e) => setPassForm({ ...passForm, oldPassword: e.target.value })}
@@ -757,9 +759,19 @@ export default function UserDashboard() {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">New Password</label>
+                      <div className="flex justify-between items-center">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">New Password</label>
+                        <button
+                          type="button"
+                          onClick={() => setShowPass(!showPass)}
+                          className="text-[10px] font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1"
+                        >
+                          {showPass ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                          {showPass ? "Hide" : "Show"}
+                        </button>
+                      </div>
                       <input
-                        type="password"
+                        type={showPass ? "text" : "password"}
                         required
                         value={passForm.newPassword}
                         onChange={(e) => setPassForm({ ...passForm, newPassword: e.target.value })}
@@ -771,7 +783,7 @@ export default function UserDashboard() {
                     <div className="space-y-1">
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Confirm Password</label>
                       <input
-                        type="password"
+                        type={showPass ? "text" : "password"}
                         required
                         value={passForm.confirmPassword}
                         onChange={(e) => setPassForm({ ...passForm, confirmPassword: e.target.value })}

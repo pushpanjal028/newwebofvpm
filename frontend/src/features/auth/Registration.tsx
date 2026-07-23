@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { UserPlus, User, Mail, Phone, Building, Map, Key, Image, FileText, Briefcase, ArrowRight, ShieldCheck, AlertCircle, X, Loader2, CheckCircle2 } from "lucide-react";
+import { UserPlus, User, Mail, Phone, Building, Map, Key, Image, FileText, Briefcase, ArrowRight, ShieldCheck, AlertCircle, X, Loader2, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { registerUser, sendOtp, getPresignedUploadUrl, uploadFileToS3 } from "../../api";
 
@@ -18,11 +18,13 @@ export default function Registration() {
     password: "",
   });
 
+  const [showPassword, setShowPassword] = useState(false);
   const [photo, setPhoto] = useState<File | null>(null);
   const [documentProof, setDocumentProof] = useState<File | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
+
   const [otp, setOtp] = useState("");
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpCooldown, setOtpCooldown] = useState(0);
@@ -318,14 +320,21 @@ export default function Registration() {
                     <Key className="h-4.5 w-4.5" />
                   </div>
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
                     required
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all text-sm"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-10 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all text-sm"
                     placeholder="••••••••"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
               </div>
 

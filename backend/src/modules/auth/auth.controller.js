@@ -7,6 +7,8 @@ import {
   updateProfileService,
   changePasswordService,
   deleteProfileService,
+  forgotPasswordSendOtpService,
+  resetPasswordWithOtpService,
 } from "./auth.service.js";
 
 export const sendOtp = async (req, res) => {
@@ -118,4 +120,27 @@ export const deleteProfile = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+export const forgotPasswordSendOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const result = await forgotPasswordSendOtpService(email);
+    res.json(result);
+  } catch (err) {
+    console.error("❌ Forgot password send OTP error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const resetPasswordWithOtp = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    const result = await resetPasswordWithOtpService(email, otp, newPassword);
+    res.json(result);
+  } catch (err) {
+    console.error("❌ Reset password with OTP error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
 

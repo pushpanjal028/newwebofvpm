@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Image, X, ZoomIn } from "lucide-react";
+import { Image, X, ZoomIn, Loader2 } from "lucide-react";
 import Tilt from "../../components/ui/Tilt";
+import { getPublicGalleryPhotos, getUploadUrl } from "../../api";
 
 import img1 from "../../assets/uppic.jpg";
 import img2 from "../../assets/uppic.jpg2.jpg";
@@ -10,17 +11,59 @@ import img4 from "../../assets/himpic.jpg";
 import img5 from "../../assets/mppic.jpg";
 import img6 from "../../assets/bg .jpg";
 
+interface GalleryItem {
+  _id?: string;
+  url: string;
+  title: string;
+  category?: string;
+}
+
 export default function Gallery() {
   const [selectedImg, setSelectedImg] = useState<{ url: string; title: string } | null>(null);
+  const [dbPhotos, setDbPhotos] = useState<GalleryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const images = [
-    { url: img1, title: 'A memorandum was given to the District Magistrate of Prayagraj by the Vishwapatrakar Mahasangh.' },
-    { url: img2, title: 'A memorandum was given to the District Magistrate of Prayagraj by the Vishwapatrakar Mahasangh.' },
-    { url: img3, title: 'Press Freedom Rally' },
-    { url: img4, title: 'Member Networking Event in Himachal pradesh' },
-    { url: img5, title: 'Awards Ceremony in Madhyapradesh' },
-    { url: img6, title: 'Training Session in Himachal pradesh' },
+  const defaultImages: GalleryItem[] = [
+    { url: img1, title: 'A memorandum was given to the District Magistrate of Prayagraj by the Vishwapatrakar Mahasangh.', category: 'Assemblies' },
+    { url: img2, title: 'A memorandum was given to the District Magistrate of Prayagraj by the Vishwapatrakar Mahasangh.', category: 'Assemblies' },
+    { url: img3, title: 'Press Freedom Rally', category: 'Assemblies' },
+    { url: img4, title: 'Member Networking Event in Himachal pradesh', category: 'Events' },
+    { url: img5, title: 'Awards Ceremony in Madhyapradesh', category: 'Awards' },
+    { url: img6, title: 'Training Session in Himachal pradesh', category: 'Training' },
   ];
+
+  useEffect(() => {
+    const fetchPhotos = async () => {
+      setLoading(true);
+      try {
+        const data = await getPublicGalleryPhotos();
+        if (data && data.length > 0) {
+          const mapped = data.map((item: any) => ({
+            _id: item._id,
+            url: getUploadUrl(item.imageUrl),
+            title: item.title,
+            category: item.category || "Events",
+          }));
+          setDbPhotos([...mapped, ...defaultImages]);
+        } else {
+          setDbPhotos(defaultImages);
+        }
+      } catch (err) {
+        console.error("❌ Failed to load gallery photos:", err);
+        setDbPhotos(defaultImages);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPhotos();
+  }, []);
+
+
+  const displayImages = dbPhotos.filter(
+    (img) => selectedCategory === "All" || img.category === selectedCategory
+  );
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -45,7 +88,7 @@ export default function Gallery() {
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-16 space-y-4"
+          className="text-center mb-12 space-y-4"
         >
           <div className="inline-flex p-3 rounded-full bg-amber-500/10 dark:bg-amber-400/10 border border-amber-500/20 dark:border-amber-400/20 text-amber-600 dark:text-amber-400 mb-2">
             <Image className="h-6 w-6" />
@@ -59,43 +102,76 @@ export default function Gallery() {
           <div className="w-16 h-1 bg-gradient-to-r from-amber-500 to-amber-600 mx-auto rounded-full" />
         </motion.div>
 
+        {/* Category Filters */}
+        <div className="flex flex-wrap justify-center gap-2 mb-12">
+          {["All", "Events", "Assemblies", "Awards", "Training", "General"].map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+                selectedCategory === cat
+                  ? "bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 border-amber-500 shadow-md scale-105"
+                  : "bg-white dark:bg-slate-900/60 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:border-amber-500/50"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
         {/* Gallery Grid */}
-        <motion.div 
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
-        >
-          {images.map((image, index) => (
-            <motion.div key={index} variants={itemVariants}>
-              <Tilt>
-                <div 
-                  onClick={() => setSelectedImg({ url: image.url, title: image.title })}
-                  className="group relative cursor-pointer overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/40 shadow-xl backdrop-blur-sm aspect-[4/3] flex items-center justify-center"
-                >
-                  <img
-                    src={image.url}
-                    alt={image.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                  />
-                  
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent opacity-85 group-hover:opacity-95 transition-opacity flex flex-col justify-end p-6">
-                    <div className="translate-y-2 group-hover:translate-y-0 transition-transform duration-300 space-y-2">
-                      <p className="text-white font-bold text-sm md:text-base leading-snug line-clamp-2">
-                        {image.title}
-                      </p>
-                      <span className="inline-flex items-center text-xs font-bold text-amber-400 gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <ZoomIn className="h-3.5 w-3.5" />
-                        Expand Photo
-                      </span>
+        {loading ? (
+          <div className="py-24 text-center space-y-3">
+            <Loader2 className="h-10 w-10 text-amber-500 animate-spin mx-auto" />
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Loading Live Photo Gallery...</p>
+          </div>
+        ) : displayImages.length === 0 ? (
+          <div className="py-24 text-center text-slate-400 font-bold text-sm">
+            No photos found in category "{selectedCategory}".
+          </div>
+        ) : (
+          <motion.div 
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+          >
+            {displayImages.map((image, index) => (
+              <motion.div key={image._id || index} variants={itemVariants}>
+                <Tilt>
+                  <div 
+                    onClick={() => setSelectedImg({ url: image.url, title: image.title })}
+                    className="group relative cursor-pointer overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/40 shadow-xl backdrop-blur-sm aspect-[4/3] flex items-center justify-center"
+                  >
+                    <img
+                      src={image.url}
+                      alt={image.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    />
+                    
+                    {/* Hover Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent opacity-85 group-hover:opacity-95 transition-opacity flex flex-col justify-end p-6">
+                      <div className="translate-y-2 group-hover:translate-y-0 transition-transform duration-300 space-y-2">
+                        {image.category && (
+                          <span className="inline-block text-[9px] font-black uppercase text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/30">
+                            {image.category}
+                          </span>
+                        )}
+                        <p className="text-white font-bold text-sm md:text-base leading-snug line-clamp-2">
+                          {image.title}
+                        </p>
+                        <span className="inline-flex items-center text-xs font-bold text-amber-400 gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <ZoomIn className="h-3.5 w-3.5" />
+                          Expand Photo
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Tilt>
-            </motion.div>
-          ))}
-        </motion.div>
+                </Tilt>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
       </div>
 
       {/* Lightbox Modal */}
@@ -140,3 +216,4 @@ export default function Gallery() {
     </div>
   );
 }
+

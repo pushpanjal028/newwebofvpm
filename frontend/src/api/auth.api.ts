@@ -88,3 +88,30 @@ export const deleteMemberProfile = async () => {
   });
 };
 
+export const sendForgotPasswordOtp = async (email: string) => {
+  const res = await fetch(`${BASE_URL}/auth/forgot-password/send-otp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to send password reset code");
+  }
+  return data;
+};
+
+export const resetPasswordWithOtp = async (resetData: { email: string; otp: string; newPassword: string }) => {
+  const res = await fetch(`${BASE_URL}/auth/forgot-password/reset`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(resetData),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to reset password");
+  }
+  return data;
+};
+
+

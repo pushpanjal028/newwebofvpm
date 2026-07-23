@@ -2,17 +2,21 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Users, CheckCircle2, XCircle, Clock, Search, LogOut,
-  SlidersHorizontal, Edit3, Trash2, Check, X, ShieldAlert, Eye, FileText, ChevronLeft, ChevronRight
+  SlidersHorizontal, Edit3, Trash2, Check, X, ShieldAlert, Eye, FileText, ChevronLeft, ChevronRight,
+  Image as ImageIcon, Plus, Upload, Loader2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   getAdminStats, getAdminMembers, getAdminAuditLogs,
   updateMemberDetails, deleteMember, verifyPayment, verifyMembership,
-  getUploadUrl, clearAuth
+  getUploadUrl, clearAuth,
+  getPublicGalleryPhotos, createGalleryPhoto, deleteGalleryPhoto,
+  getPresignedUploadUrl, uploadFileToS3
 } from "../../api";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+
 
   // Authentication check
   useEffect(() => {
@@ -32,8 +36,8 @@ export default function AdminDashboard() {
     }
   }, [navigate]);
 
-  // Tabs: "members" or "logs"
-  const [activeTab, setActiveTab] = useState<"members" | "logs">("members");
+  // Tabs: "members", "logs", or "gallery"
+  const [activeTab, setActiveTab] = useState<"members" | "logs" | "gallery">("members");
 
   // Stats
   const [stats, setStats] = useState({
@@ -59,6 +63,73 @@ export default function AdminDashboard() {
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [logPage, setLogPage] = useState(1);
   const [logTotalPages, setLogTotalPages] = useState(1);
+
+  // Photo Gallery Management State
+  const [galleryPhotos, setGalleryPhotos] = useState<any[]>([]);
+  const [galleryLoading, setGalleryLoading] = useState(false);
+  const [galleryTitle, setGalleryTitle] = useState("");
+  const [galleryCategory, setGalleryCategory] = useState("Events");
+  const [galleryFile, setGalleryFile] = useState<File | null>(null);
+  const [galleryUploadLoading, setGalleryUploadLoading] = useState(false);
+
+  const fetchGalleryPhotos = async () => {
+    setGalleryLoading(true);
+    try {
+      const data = await getPublicGalleryPhotos();
+      setGalleryPhotos(data);
+    } catch (err: any) {
+      console.error("Error fetching gallery photos:", err);
+    } finally {
+      setGalleryLoading(false);
+    }
+  };
+
+  const handleGalleryUploadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!galleryTitle || !galleryFile) {
+      setError("Please provide a photo title and select an image file.");
+      return;
+    }
+
+    setGalleryUploadLoading(true);
+    setError("");
+    setSuccess("");
+    try {
+      const presigned = await getPresignedUploadUrl(galleryFile.name, galleryFile.type);
+      await uploadFileToS3(presigned.uploadUrl, galleryFile);
+      await createGalleryPhoto({
+        title: galleryTitle,
+        imageUrl: presigned.key,
+        category: galleryCategory,
+      });
+
+      setSuccess("Gallery photo uploaded successfully.");
+      setGalleryTitle("");
+      setGalleryFile(null);
+      fetchGalleryPhotos();
+    } catch (err: any) {
+      setError(err.message || "Failed to upload gallery photo.");
+    } finally {
+      setGalleryUploadLoading(false);
+    }
+  };
+
+  const handleDeleteGalleryPhotoItem = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this photo from the gallery?")) return;
+    setActionLoading(true);
+    setError("");
+    setSuccess("");
+    try {
+      await deleteGalleryPhoto(id);
+      setSuccess("Photo deleted from gallery successfully.");
+      fetchGalleryPhotos();
+    } catch (err: any) {
+      setError(err.message || "Failed to delete photo from gallery.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
 
   // States for modals
   const [loading, setLoading] = useState(true);
@@ -135,10 +206,13 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (activeTab === "members") {
       fetchMembers();
-    } else {
+    } else if (activeTab === "logs") {
       fetchAuditLogs();
+    } else if (activeTab === "gallery") {
+      fetchGalleryPhotos();
     }
   }, [activeTab, page, logPage, paymentFilter, approvalFilter]);
+
 
   // Handle Search Trigger
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -305,6 +379,14 @@ export default function AdminDashboard() {
             }`}
           >
             Admin Audit Logs
+          </button>
+          <button
+            onClick={() => setActiveTab("gallery")}
+            className={`px-6 py-2.5 text-xs font-black tracking-wider uppercase border-b-2 transition-all ${
+              activeTab === "gallery" ? "border-amber-500 text-slate-900 font-extrabold" : "border-transparent text-slate-500 hover:text-slate-900"
+            }`}
+          >
+            Photo Gallery ({galleryPhotos.length})
           </button>
         </div>
 
@@ -660,6 +742,163 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {/* TAB 3: PHOTO GALLERY MANAGEMENT */}
+        {activeTab === "gallery" && (
+          <div className="space-y-8">
+            {/* Upload Form */}
+            <form onSubmit={handleGalleryUploadSubmit} className="bg-white border rounded-3xl p-6 md:p-8 space-y-4 shadow-sm">
+              <h3 className="text-lg font-black text-slate-900 border-b pb-3 flex items-center gap-2">
+                <ImageIcon className="h-5 w-5 text-amber-500" /> Upload New Gallery Photo
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1 md:col-span-2">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    Photo Title / Caption *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={galleryTitle}
+                    onChange={(e) => setGalleryTitle(e.target.value)}
+                    placeholder="e.g. State Executive Committee Meeting in Prayagraj"
+                    className="w-full bg-slate-50 border rounded-xl py-2.5 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-800 font-medium"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    Category
+                  </label>
+                  <select
+                    value={galleryCategory}
+                    onChange={(e) => setGalleryCategory(e.target.value)}
+                    className="w-full bg-slate-50 border rounded-xl py-2.5 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-800 font-bold"
+                  >
+                    <option value="Events">Events & Conferences</option>
+                    <option value="Assemblies">Assemblies & Rallies</option>
+                    <option value="Awards">Awards & Recognitions</option>
+                    <option value="Training">Training & Workshops</option>
+                    <option value="General">General</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  Select Image File (JPG / PNG / WebP) *
+                </label>
+                <div className="flex items-center gap-3">
+                  <label className="cursor-pointer inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-800 px-4 py-2.5 rounded-xl text-xs font-bold transition-all border">
+                    <Upload className="h-4 w-4 text-amber-600" />
+                    {galleryFile ? galleryFile.name : "Choose Image File"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      required
+                      className="hidden"
+                      onChange={(e) => e.target.files && setGalleryFile(e.target.files[0])}
+                    />
+                  </label>
+                  {galleryFile && (
+                    <span className="text-xs font-bold text-green-600">
+                      ✓ Ready to upload ({ (galleryFile.size / (1024 * 1024)).toFixed(2) } MB)
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={galleryUploadLoading}
+                className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-6 py-2.5 rounded-xl transition-all shadow disabled:opacity-50 flex items-center gap-2"
+              >
+                {galleryUploadLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin text-amber-400" />
+                    <span>Uploading Photo...</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 text-amber-400" />
+                    <span>Upload to Public Gallery</span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Gallery Photos Grid */}
+            <div className="bg-white border rounded-3xl p-6 md:p-8 space-y-6 shadow-sm">
+              <div className="flex justify-between items-center border-b pb-4">
+                <h3 className="text-base font-black text-slate-900">
+                  Current Public Gallery Photos ({galleryPhotos.length})
+                </h3>
+                <button
+                  onClick={fetchGalleryPhotos}
+                  className="text-xs text-amber-600 font-bold hover:underline"
+                >
+                  Refresh Gallery
+                </button>
+              </div>
+
+              {galleryLoading ? (
+                <div className="py-16 text-center space-y-3">
+                  <Loader2 className="h-8 w-8 text-amber-500 animate-spin mx-auto" />
+                  <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Loading gallery photos...</p>
+                </div>
+              ) : galleryPhotos.length === 0 ? (
+                <div className="py-16 text-center text-slate-400 text-xs font-bold">
+                  No photos uploaded to database yet. Use the form above to upload event photos.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                  {galleryPhotos.map((photo) => (
+                    <div key={photo._id} className="border rounded-2xl overflow-hidden bg-slate-50 flex flex-col justify-between group shadow-sm">
+                      <div className="relative aspect-[4/3] bg-slate-200 overflow-hidden">
+                        <img
+                          src={getUploadUrl(photo.imageUrl)}
+                          alt={photo.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <button
+                          onClick={() => setViewingFileUrl(getUploadUrl(photo.imageUrl))}
+                          className="absolute top-2 right-2 p-1.5 bg-slate-950/80 hover:bg-slate-900 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="View image"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="p-3 space-y-2 flex-grow flex flex-col justify-between">
+                        <div>
+                          <span className="text-[9px] font-bold uppercase text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                            {photo.category || "Events"}
+                          </span>
+                          <p className="text-xs font-bold text-slate-800 mt-1.5 leading-snug line-clamp-2" title={photo.title}>
+                            {photo.title}
+                          </p>
+                        </div>
+
+                        <div className="pt-2 border-t flex justify-between items-center text-[10px] text-slate-400 font-bold">
+                          <span>{new Date(photo.createdAt).toLocaleDateString("en-IN")}</span>
+                          <button
+                            onClick={() => handleDeleteGalleryPhotoItem(photo._id)}
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1"
+                            title="Delete photo"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" /> Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
 
         {/* MODAL: DETAIL INSPECTOR */}
         {inspectingMember && (
