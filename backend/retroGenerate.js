@@ -1,5 +1,5 @@
+import "dotenv/config.js";
 import mongoose from "mongoose";
-import dotenv from "dotenv";
 import User from "./src/models/User.js";
 import MemberCard from "./src/models/MemberCard.js";
 import { generateCardPDF } from "./src/modules/member/cardGenerator.service.js";
@@ -17,8 +17,6 @@ try {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-dotenv.config();
 
 async function checkAndGenerate() {
   await mongoose.connect(process.env.MONGO_URI);
