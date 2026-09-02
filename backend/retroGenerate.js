@@ -7,6 +7,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import dns from "node:dns/promises";
+import { uploadBufferToS3 } from "./src/utils/s3.js";
 
 try {
   dns.setServers(["8.8.8.8", "1.1.1.1"]);
@@ -46,8 +47,12 @@ async function checkAndGenerate() {
         const pdfFilename = `member_card_${user.membershipId}_${Date.now()}.pdf`;
         let pdfUrl = `uploads/${pdfFilename}`;
         
-        const localPath = path.join(__dirname, "uploads", pdfFilename);
-        fs.writeFileSync(localPath, pdfBuffer);
+        if (process.env.AWS_BUCKET_NAME) {
+          await uploadBufferToS3(pdfUrl, pdfBuffer, "application/pdf");
+        } else {
+          const localPath = path.join(__dirname, "uploads", pdfFilename);
+          fs.writeFileSync(localPath, pdfBuffer);
+        }
 
         if (card) {
           card.pdfUrl = pdfUrl;
