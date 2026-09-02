@@ -11,6 +11,9 @@ import {
   deleteProfile,
   forgotPasswordSendOtp,
   resetPasswordWithOtp,
+  registerPhase3,
+  verifyEmailToken,
+  resendVerificationEmail,
 } from "./auth.controller.js";
 import auth from "../../middlewares/auth.js";
 import upload from "../../middlewares/upload.js";
@@ -45,6 +48,9 @@ const contactLimiter = rateLimit({
 // Enpoints
 router.post("/send-otp", otpLimiter, sendOtp);
 router.post("/register", registerLimiter, registerUser);
+router.post("/register-v2", registerLimiter, registerPhase3); // Phase 3 endpoint
+router.post("/verify-email", verifyEmailToken);
+router.post("/resend-verification", otpLimiter, resendVerificationEmail);
 router.post("/login", loginLimiter, loginUser);
 router.post("/contact", contactLimiter, submitContactForm);
 router.post("/forgot-password/send-otp", otpLimiter, forgotPasswordSendOtp);

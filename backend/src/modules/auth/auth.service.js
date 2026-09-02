@@ -1,7 +1,11 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
+import mongoose from "mongoose";
 import User from "../../models/User.js";
 import OTP from "../../models/OTP.js";
+import Referral from "../../models/Referral.js";
+import RegistrationAttempt from "../../models/RegistrationAttempt.js";
 import transporter from "../../config/mailer.js";
 
 export const sendOtpService = async (email) => {
@@ -54,6 +58,8 @@ export const sendOtpService = async (email) => {
 
   return { message: "Verification OTP code sent to your email successfully." };
 };
+
+
 
 export const registerUserService = async ({
   name,
@@ -365,4 +371,150 @@ export const resetPasswordWithOtpService = async (email, otp, newPassword) => {
   return { message: "Password reset successfully. You can now log in with your new password." };
 };
 
+export const sendVerificationEmailService = async (user) => {
+  const token = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+  user.emailVerificationTokenHash = tokenHash;
+  // Expire in 24 hours
+  user.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await user.save();
+
+  const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
+
+  try {
+    await transporter.sendMail({
+      from: process.env.FROM_EMAIL,
+      to: user.email,
+      subject: "Verify Your Email - Vishwa Patrakar Mahasangh",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2>Email Verification</h2>
+          <p>Hello ${user.name},</p>
+          <p>Please verify your email by clicking the link below:</p>
+          <a href="${verifyUrl}" style="display:inline-block; padding:10px 20px; background:#f59e0b; color:#fff; text-decoration:none; border-radius:5px;">Verify Email</a>
+          <p>This link will expire in 24 hours.</p>
+        </div>
+      `
+    });
+  } catch (err) {
+    console.error("❌ Email sending failed, but user was created.", err);
+    // Do not throw here, user is already created, they can request resend
+  }
+};
+
+export const registerPhase3Service = async ({
+  name, email, password, phone, organization, state, city, designation, photo, documentProof, coordinatorCode, attemptId
+}) => {
+  if (!name || !email || !password || !phone) {
+    throw new Error("Name, email, password, and phone are required.");
+  }
+
+  const existing = await User.findOne({ email });
+  if (existing) {
+    throw new Error("User already exists with this email.");
+  }
+
+  let referredByUserId = null;
+  let validCoordinatorCodeUsed = null;
+
+  if (coordinatorCode) {
+    const coordinator = await User.findOne({ coordinatorCode });
+    if (!coordinator) {
+      throw new Error("Invalid Coordinator Code.");
+    }
+    referredByUserId = coordinator._id;
+    validCoordinatorCodeUsed = coordinatorCode;
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+  const newCoordinatorCode = "VPMH-" + crypto.randomBytes(3).toString("hex").toUpperCase();
+
+  const newUser = new User({
+    name,
+    email,
+    password: hashedPassword,
+    phone,
+    organization: organization || "",
+    state: state || "",
+    city: city || "",
+    designation: designation || "",
+    photo: photo || "",
+    documentProof: documentProof || "",
+    coordinatorCode: newCoordinatorCode,
+    referredBy: referredByUserId,
+    isEmailVerified: false,
+    paymentStatus: "pending",
+    approvalStatus: "pending",
+  });
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    await newUser.save({ session });
+
+    if (referredByUserId) {
+      const referral = new Referral({
+        coordinatorId: referredByUserId,
+        referredUserId: newUser._id,
+        coordinatorCodeUsed: validCoordinatorCodeUsed,
+        status: "pending",
+        paymentStatus: "pending"
+      });
+      await referral.save({ session });
+    }
+
+    await session.commitTransaction();
+
+    // If there was an attemptId, delete it so it is no longer considered temporary
+    if (attemptId) {
+      await RegistrationAttempt.deleteOne({ attemptId }, { session });
+    }
+  } catch (err) {
+    await session.abortTransaction();
+    console.error("❌ Registration transaction aborted due to error:", err);
+    throw err; // Propagate the error so the user isn't falsely told it succeeded
+  } finally {
+    session.endSession();
+  }
+
+  await sendVerificationEmailService(newUser);
+
+  return { message: "Account created successfully. We've sent a verification link to your email." };
+};
+
+export const verifyEmailTokenService = async (token) => {
+  if (!token) throw new Error("Invalid token.");
+
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const user = await User.findOne({
+    emailVerificationTokenHash: tokenHash,
+    emailVerificationExpires: { $gt: Date.now() }
+  });
+
+  if (!user) {
+    throw new Error("Verification link is invalid or has expired.");
+  }
+
+  user.isEmailVerified = true;
+  user.emailVerificationTokenHash = undefined;
+  user.emailVerificationExpires = undefined;
+  await user.save();
+
+  return { message: "Email verified successfully." };
+};
+
+export const resendVerificationEmailService = async (email) => {
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw new Error("User not found.");
+  }
+  if (user.isEmailVerified) {
+    throw new Error("Email is already verified.");
+  }
+
+  await sendVerificationEmailService(user);
+  return { message: "Verification link resent successfully." };
+};
 

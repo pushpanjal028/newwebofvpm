@@ -2,6 +2,7 @@ import {
   getPublicMembersService,
   verifyMembershipIdService,
   getMemberStatusService,
+  getCoordinatorDashboardService,
 } from "./member.service.js";
 
 export const getPublicMembers = async (req, res) => {
@@ -31,5 +32,16 @@ export const getMemberStatus = async (req, res) => {
   } catch (err) {
     console.error("❌ Fetch member status controller error:", err);
     res.status(404).json({ message: err.message || "Failed to fetch member registration status." });
+  }
+};
+
+export const getCoordinatorDashboard = async (req, res) => {
+  try {
+    // req.user is set by the auth middleware
+    const result = await getCoordinatorDashboardService(req.user.id);
+    res.json(result);
+  } catch (err) {
+    console.error("❌ Fetch coordinator dashboard error:", err);
+    res.status(500).json({ message: err.message || "Failed to fetch dashboard." });
   }
 };

@@ -20,8 +20,10 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, "../.env") });
 
 // Connect to MongoDB and seed admin
+const dbURI = process.env.NODE_ENV === "test" ? process.env.MONGO_URI_TEST : process.env.MONGO_URI;
+
 mongoose
-  .connect(process.env.MONGO_URI, {
+  .connect(dbURI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })

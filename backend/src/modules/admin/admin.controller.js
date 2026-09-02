@@ -6,6 +6,8 @@ import {
   deleteMemberApplicationService,
   verifyPaymentService,
   verifyMembershipService,
+  getCashbacksService,
+  updateCashbackStatusService,
 } from "./admin.service.js";
 
 export const getAdminStats = async (req, res) => {
@@ -93,6 +95,27 @@ export const verifyMembership = async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error("❌ Membership verify controller error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const getCashbacks = async (req, res) => {
+  try {
+    const result = await getCashbacksService();
+    res.json(result);
+  } catch (err) {
+    console.error("❌ Cashbacks fetch controller error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const updateCashbackStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const result = await updateCashbackStatusService(req.user, req.params.id, status);
+    res.json(result);
+  } catch (err) {
+    console.error("❌ Cashback status update controller error:", err);
     res.status(500).json({ message: err.message });
   }
 };

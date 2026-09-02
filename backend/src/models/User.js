@@ -40,9 +40,21 @@ const userSchema = new mongoose.Schema(
 
     // Role
     isAdmin: { type: Boolean, default: false },
+
+    // Referral System
+    coordinatorCode: { type: String, unique: true, sparse: true },
+    referredBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+
+    // Email Verification
+    isEmailVerified: { type: Boolean, default: false },
+    emailVerificationTokenHash: { type: String },
+    emailVerificationExpires: { type: Date },
   },
   { timestamps: true }
 );
+
+// Indexes
+userSchema.index({ emailVerificationTokenHash: 1 }, { sparse: true });
 
 const User = mongoose.models.User || mongoose.model("User", userSchema);
 export default User;

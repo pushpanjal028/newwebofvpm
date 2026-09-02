@@ -8,6 +8,8 @@ import {
   deleteMemberApplication,
   verifyPayment,
   verifyMembership,
+  getCashbacks,
+  updateCashbackStatus,
 } from "./admin.controller.js";
 
 const router = express.Router();
@@ -22,5 +24,8 @@ router.put("/members/:id", updateMemberDetails);
 router.delete("/members/:id", deleteMemberApplication);
 router.post("/members/:id/verify-payment", verifyPayment);
 router.post("/members/:id/verify-membership", verifyMembership);
+
+router.get("/cashbacks", getCashbacks);
+router.put("/cashbacks/:id/status", updateCashbackStatus);
 
 export default router;

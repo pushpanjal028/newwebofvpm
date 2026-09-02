@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Users, CheckCircle2, XCircle, Clock, Search, LogOut,
   SlidersHorizontal, Edit3, Trash2, Check, X, ShieldAlert, Eye, FileText, ChevronLeft, ChevronRight,
-  Image as ImageIcon, Plus, Upload, Loader2
+  Image as ImageIcon, Plus, Upload, Loader2, IndianRupee
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -11,7 +11,8 @@ import {
   updateMemberDetails, deleteMember, verifyPayment, verifyMembership,
   getUploadUrl, clearAuth,
   getPublicGalleryPhotos, createGalleryPhoto, deleteGalleryPhoto,
-  getPresignedUploadUrl, uploadFileToS3
+  getPresignedUploadUrl, uploadFileToS3,
+  getAdminCashbacks, updateCashbackStatus
 } from "../../api";
 
 export default function AdminDashboard() {
@@ -36,8 +37,8 @@ export default function AdminDashboard() {
     }
   }, [navigate]);
 
-  // Tabs: "members", "logs", or "gallery"
-  const [activeTab, setActiveTab] = useState<"members" | "logs" | "gallery">("members");
+  // Tabs: "members", "logs", "gallery" or "cashbacks"
+  const [activeTab, setActiveTab] = useState<"members" | "logs" | "gallery" | "cashbacks">("members");
 
   // Stats
   const [stats, setStats] = useState({
@@ -64,6 +65,10 @@ export default function AdminDashboard() {
   const [logPage, setLogPage] = useState(1);
   const [logTotalPages, setLogTotalPages] = useState(1);
 
+  // Cashbacks
+  const [cashbacks, setCashbacks] = useState<any[]>([]);
+  const [cashbacksLoading, setCashbacksLoading] = useState(false);
+
   // Photo Gallery Management State
   const [galleryPhotos, setGalleryPhotos] = useState<any[]>([]);
   const [galleryLoading, setGalleryLoading] = useState(false);
@@ -81,6 +86,18 @@ export default function AdminDashboard() {
       console.error("Error fetching gallery photos:", err);
     } finally {
       setGalleryLoading(false);
+    }
+  };
+
+  const fetchCashbacks = async () => {
+    setCashbacksLoading(true);
+    try {
+      const data = await getAdminCashbacks();
+      setCashbacks(data);
+    } catch (err: any) {
+      console.error("Error fetching cashbacks:", err);
+    } finally {
+      setCashbacksLoading(false);
     }
   };
 
@@ -210,6 +227,8 @@ export default function AdminDashboard() {
       fetchAuditLogs();
     } else if (activeTab === "gallery") {
       fetchGalleryPhotos();
+    } else if (activeTab === "cashbacks") {
+      fetchCashbacks();
     }
   }, [activeTab, page, logPage, paymentFilter, approvalFilter]);
 
@@ -297,6 +316,22 @@ export default function AdminDashboard() {
       city: member.city || "",
       designation: member.designation || "",
     });
+  };
+
+  const handleUpdateCashback = async (id: string, status: string) => {
+    if (!window.confirm(`Are you sure you want to change cashback status to ${status}?`)) return;
+    setActionLoading(true);
+    setError("");
+    setSuccess("");
+    try {
+      await updateCashbackStatus(id, status);
+      setSuccess(`Cashback marked as ${status} successfully.`);
+      fetchCashbacks();
+    } catch (err: any) {
+      setError(err.message || "Operation failed.");
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   // Delete Member Action
@@ -388,6 +423,14 @@ export default function AdminDashboard() {
           >
             Photo Gallery ({galleryPhotos.length})
           </button>
+          <button
+            onClick={() => setActiveTab("cashbacks")}
+            className={`px-6 py-2.5 text-xs font-black tracking-wider uppercase border-b-2 transition-all ${
+              activeTab === "cashbacks" ? "border-amber-500 text-slate-900 font-extrabold" : "border-transparent text-slate-500 hover:text-slate-900"
+            }`}
+          >
+            Referral Cashbacks
+          </button>
         </div>
 
         {/* Dynamic Alerts */}
@@ -417,7 +460,7 @@ export default function AdminDashboard() {
         </AnimatePresence>
 
         {/* Active tab content */}
-        {activeTab === "members" ? (
+        {activeTab === "members" && (
           <div className="space-y-6">
             
             {/* Search & Filter Controls */}
@@ -647,7 +690,9 @@ export default function AdminDashboard() {
               )}
             </div>
           </div>
-        ) : (
+        )}
+
+        {activeTab === "logs" && (
           /* AUDIT LOGS TAB */
           <div className="space-y-6">
             <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
@@ -739,6 +784,98 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "cashbacks" && (
+          /* CASHBACKS TAB */
+          <div className="space-y-6">
+            <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/50 border-b text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                      <th className="py-4 px-6">Coordinator Info</th>
+                      <th className="py-4 px-4">Referrals & Amount</th>
+                      <th className="py-4 px-4">Status & Action</th>
+                      <th className="py-4 px-4">Eligibility Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cashbacksLoading ? (
+                      <tr>
+                        <td colSpan={4} className="py-20 text-center text-xs text-slate-400 font-bold">
+                          Loading cashbacks...
+                        </td>
+                      </tr>
+                    ) : cashbacks.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="py-20 text-center text-xs text-slate-400 font-bold">
+                          No cashback records found.
+                        </td>
+                      </tr>
+                    ) : (
+                      cashbacks.map((cb) => (
+                        <tr key={cb._id} className="border-b last:border-0 hover:bg-slate-50/30 text-xs">
+                          <td className="py-4 px-6">
+                            {cb.coordinatorId ? (
+                              <div>
+                                <span className="font-bold text-slate-800 text-sm">{cb.coordinatorId.name}</span>
+                                <div className="text-[10px] text-slate-500 font-mono mt-0.5">{cb.coordinatorId.coordinatorCode}</div>
+                                <div className="text-[10px] text-slate-400 mt-0.5">{cb.coordinatorId.phone}</div>
+                              </div>
+                            ) : (
+                              <span className="text-red-500 italic">Coordinator Deleted</span>
+                            )}
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className="font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full text-[10px]">
+                              {cb.referralCount} / {cb.threshold} Referrals
+                            </span>
+                            <div className="mt-2 font-black text-green-700 text-sm flex items-center gap-1">
+                              <IndianRupee className="h-3.5 w-3.5" /> {cb.amount}
+                            </div>
+                          </td>
+                          <td className="py-4 px-4">
+                            <div className="flex flex-col gap-2 items-start">
+                              <span className={`inline-flex rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${
+                                cb.status === "eligible" ? "bg-amber-50 text-amber-600 border border-amber-200" :
+                                cb.status === "processing" ? "bg-blue-50 text-blue-600 border border-blue-200 animate-pulse" :
+                                cb.status === "paid" ? "bg-green-50 text-green-600 border border-green-200" :
+                                "bg-red-50 text-red-600 border border-red-200"
+                              }`}>
+                                {cb.status}
+                              </span>
+                              
+                              <div className="flex gap-1 mt-1">
+                                {cb.status === "eligible" && (
+                                  <>
+                                    <button onClick={() => handleUpdateCashback(cb._id, "processing")} className="text-[10px] bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded font-bold transition">Process</button>
+                                    <button onClick={() => handleUpdateCashback(cb._id, "rejected")} className="text-[10px] bg-slate-100 hover:bg-red-100 hover:text-red-700 text-slate-600 px-2 py-1 rounded font-bold transition">Reject</button>
+                                  </>
+                                )}
+                                {cb.status === "processing" && (
+                                  <>
+                                    <button onClick={() => handleUpdateCashback(cb._id, "paid")} className="text-[10px] bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded font-bold transition">Mark Paid</button>
+                                    <button onClick={() => handleUpdateCashback(cb._id, "rejected")} className="text-[10px] bg-slate-100 hover:bg-red-100 hover:text-red-700 text-slate-600 px-2 py-1 rounded font-bold transition">Reject</button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-4 px-4 text-slate-500 font-mono text-[10px]">
+                            {new Date(cb.eligibleAt).toLocaleString("en-IN")}
+                            {cb.processedAt && (
+                              <div className="mt-1 text-green-600">Processed: {new Date(cb.processedAt).toLocaleString("en-IN")}</div>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}

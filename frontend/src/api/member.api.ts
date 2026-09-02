@@ -11,3 +11,7 @@ export const getPublicVerification = async (membershipId: string) => {
 export const getMemberStatus = async (emailOrPhone: string) => {
   return await fetchWithAuth(`/members/status/${encodeURIComponent(emailOrPhone)}`);
 };
+
+export const getCoordinatorDashboard = async () => {
+  return await fetchWithAuth("/members/coordinator");
+};

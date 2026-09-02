@@ -55,3 +55,15 @@ export const verifyMembership = async (id: string, status: "approved" | "rejecte
     body: JSON.stringify({ status }),
   });
 };
+
+export const getAdminCashbacks = async () => {
+  return await fetchWithAuth("/admin/cashbacks");
+};
+
+export const updateCashbackStatus = async (id: string, status: string) => {
+  return await fetchWithAuth(`/admin/cashbacks/${id}/status`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+};

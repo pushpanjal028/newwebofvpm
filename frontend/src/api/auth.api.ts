@@ -13,15 +13,43 @@ export const sendOtp = async (email: string) => {
   return data;
 };
 
-export const getPresignedUploadUrl = async (filename: string, fileType: string): Promise<{ uploadUrl: string; key: string }> => {
+export const initRegistration = async () => {
+  const res = await fetch(`${BASE_URL}/uploads/init-registration`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to initialize registration");
+  }
+  return data;
+};
+
+export const getPresignedUploadUrl = async (filename: string, fileType: string, attemptId?: string): Promise<{ uploadUrl: string; key: string }> => {
+  const payload: any = { filename, fileType };
+  if (attemptId) payload.attemptId = attemptId;
+
   const res = await fetch(`${BASE_URL}/uploads/presigned-url`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ filename, fileType }),
+    body: JSON.stringify(payload),
   });
   const data = await res.json();
   if (!res.ok) {
     throw new Error(data.message || "Failed to generate presigned S3 URL");
+  }
+  return data;
+};
+
+export const cleanupRegistrationAttempt = async (attemptId: string) => {
+  const res = await fetch(`${BASE_URL}/uploads/cleanup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ attemptId }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to cleanup registration attempt");
   }
   return data;
 };
@@ -37,6 +65,47 @@ export const registerUser = async (registrationData: any) => {
   const data = await res.json();
   if (!res.ok) {
     throw new Error(data.message || "Registration failed");
+  }
+  return data;
+};
+
+export const registerUserPhase3 = async (registrationData: any) => {
+  const res = await fetch(`${BASE_URL}/auth/register-v2`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(registrationData),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || "Registration failed");
+  }
+  return data;
+};
+
+export const verifyEmailToken = async (token: string) => {
+  const res = await fetch(`${BASE_URL}/auth/verify-email`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to verify email");
+  }
+  return data;
+};
+
+export const resendVerificationEmail = async (email: string) => {
+  const res = await fetch(`${BASE_URL}/auth/resend-verification`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to resend verification email");
   }
   return data;
 };

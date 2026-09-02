@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   User, ShieldCheck, Clock, AlertCircle, Printer, FileText,
-  MapPin, Key, Edit, LogOut, CheckCircle, Eye, EyeOff, Loader2, X, Download, Trash2, Upload
+  MapPin, Key, Edit, LogOut, CheckCircle, Eye, EyeOff, Loader2, X, Download, Trash2, Upload, Briefcase, Users, Copy, Check
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
@@ -16,6 +16,7 @@ import {
   getPresignedUploadUrl,
   uploadFileToS3
 } from "../../api";
+import { getCoordinatorDashboard } from "../../api/member.api";
 import Logo from "../../assets/logo perfect.png";
 
 interface ProfileData {
@@ -47,8 +48,13 @@ export default function UserDashboard() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // Tabs: "overview", "settings"
-  const [activeTab, setActiveTab] = useState<"overview" | "settings">("overview");
+  // Tabs: "overview", "settings", "coordinator"
+  const [activeTab, setActiveTab] = useState<"overview" | "settings" | "coordinator">("overview");
+
+  // Coordinator Data
+  const [coordinatorData, setCoordinatorData] = useState<any>(null);
+  const [coordinatorLoading, setCoordinatorLoading] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   // Edit fields
   const [editForm, setEditForm] = useState({
@@ -94,6 +100,9 @@ export default function UserDashboard() {
         city: data.city || "",
         designation: data.designation || "",
       });
+      
+      // Also fetch coordinator data
+      fetchCoordinatorData();
     } catch (err: any) {
       console.error("❌ Profile fetch error:", err);
       setError(err.message || "Session expired or failed to load profile.");
@@ -105,9 +114,29 @@ export default function UserDashboard() {
     }
   };
 
+  const fetchCoordinatorData = async () => {
+    setCoordinatorLoading(true);
+    try {
+      const data = await getCoordinatorDashboard();
+      setCoordinatorData(data);
+    } catch (err) {
+      console.error("Failed to load coordinator dashboard", err);
+    } finally {
+      setCoordinatorLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchProfileData();
   }, []);
+
+  const handleCopyCode = () => {
+    if (coordinatorData?.coordinatorCode) {
+      navigator.clipboard.writeText(coordinatorData.coordinatorCode);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
+    }
+  };
 
   const handleLogout = () => {
     clearAuth();
@@ -296,6 +325,13 @@ export default function UserDashboard() {
                 >
                   <Edit className="h-4 w-4 text-slate-500" />
                   {activeTab === "overview" ? "Profile Settings" : "View Workspace"}
+                </button>
+                <button
+                  onClick={() => setActiveTab("coordinator")}
+                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold border rounded-xl hover:bg-amber-50 bg-white transition-all shadow-sm text-amber-700 border-amber-200"
+                >
+                  <Briefcase className="h-4 w-4" />
+                  Referral Dashboard
                 </button>
                 <button
                   onClick={handleLogout}
@@ -605,6 +641,138 @@ export default function UserDashboard() {
                   )}
                 </div>
 
+              </div>
+            ) : activeTab === "coordinator" ? (
+              /* TAB: COORDINATOR DASHBOARD */
+              <div className="space-y-8 print:hidden">
+                {coordinatorLoading ? (
+                  <div className="py-12 text-center space-y-4">
+                    <Loader2 className="h-8 w-8 text-amber-600 animate-spin mx-auto" />
+                    <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Loading Coordinator Data...</p>
+                  </div>
+                ) : coordinatorData ? (
+                  <>
+                    <div className="bg-white border rounded-3xl p-6 md:p-8 shadow-sm">
+                      <h2 className="text-xl font-black text-slate-900 border-b pb-4 flex items-center gap-2 mb-6">
+                        <Briefcase className="h-6 w-6 text-amber-500" /> My Coordinator Dashboard
+                      </h2>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Code Display */}
+                        <div className="space-y-4">
+                          <h4 className="text-xs font-black uppercase text-slate-500 tracking-wider">Your Coordinator Code</h4>
+                          <div className="bg-slate-50 border-2 border-dashed border-amber-200 rounded-2xl p-6 flex flex-col items-center justify-center space-y-3 relative overflow-hidden">
+                            <div className="absolute inset-0 bg-amber-50/50 pointer-events-none" />
+                            <span className="font-mono text-3xl font-black text-amber-600 tracking-widest relative z-10">
+                              {coordinatorData.coordinatorCode}
+                            </span>
+                            <div className="flex gap-2 relative z-10 w-full mt-2">
+                              <button
+                                onClick={handleCopyCode}
+                                className="flex-1 flex items-center justify-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-100 px-4 py-2 rounded-xl text-xs font-bold text-slate-700 transition-all shadow-sm"
+                              >
+                                {copiedCode ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                                {copiedCode ? "Copied!" : "Copy Code"}
+                              </button>
+                            </div>
+                            <p className="text-[10px] text-slate-500 text-center relative z-10 pt-2">
+                              Share this code with new members during their registration.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Progress Stats */}
+                        <div className="space-y-4 flex flex-col">
+                          <h4 className="text-xs font-black uppercase text-slate-500 tracking-wider flex items-center justify-between">
+                            <span>Referral Progress</span>
+                            <span className="text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">
+                              {coordinatorData.eligibleReferrals} / {coordinatorData.threshold} eligible referrals
+                            </span>
+                          </h4>
+                          
+                          <div className="bg-white border rounded-2xl p-5 shadow-sm space-y-5 flex-1">
+                            {/* Progress bar */}
+                            <div className="space-y-2">
+                              <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden flex">
+                                <motion.div 
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${coordinatorData.progress}%` }}
+                                  transition={{ duration: 1, delay: 0.2 }}
+                                  className="h-full bg-gradient-to-r from-amber-500 to-amber-400"
+                                />
+                              </div>
+                              <p className="text-[10px] text-slate-500 font-medium">
+                                Add <strong className="text-slate-800">{Math.max(0, coordinatorData.threshold - coordinatorData.eligibleReferrals)} more</strong> eligible members to become eligible for ₹{coordinatorData.cashbackAmount} cashback.
+                              </p>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-3">
+                              <div className="bg-slate-50 border rounded-xl p-3 text-center">
+                                <span className="block text-2xl font-black text-slate-800">{coordinatorData.totalReferrals}</span>
+                                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">Total</span>
+                              </div>
+                              <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 text-center">
+                                <span className="block text-2xl font-black text-amber-700">{coordinatorData.pendingReferrals}</span>
+                                <span className="text-[9px] font-bold text-amber-600/80 uppercase tracking-widest mt-1">Pending</span>
+                              </div>
+                              <div className="bg-green-50 border border-green-100 rounded-xl p-3 text-center">
+                                <span className="block text-2xl font-black text-green-700">{coordinatorData.eligibleReferrals}</span>
+                                <span className="text-[9px] font-bold text-green-600/80 uppercase tracking-widest mt-1">Eligible</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* History Table */}
+                    <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
+                      <div className="p-6 border-b flex items-center justify-between bg-slate-50/50">
+                        <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
+                          <Users className="h-4.5 w-4.5 text-slate-500" /> Referral History
+                        </h3>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="bg-slate-50 text-[10px] uppercase tracking-widest text-slate-500 font-bold border-b">
+                              <th className="p-4 pl-6">Member Name</th>
+                              <th className="p-4">Date Registered</th>
+                              <th className="p-4 pr-6">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y text-xs text-slate-700">
+                            {coordinatorData.history && coordinatorData.history.length > 0 ? (
+                              coordinatorData.history.map((item: any, idx: number) => (
+                                <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                                  <td className="p-4 pl-6 font-bold">{item.memberName}</td>
+                                  <td className="p-4">{formatDate(item.date)}</td>
+                                  <td className="p-4 pr-6">
+                                    {item.status === "eligible" ? (
+                                      <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase">Eligible</span>
+                                    ) : (
+                                      <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase">Pending</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td colSpan={3} className="p-8 text-center text-slate-400 text-xs font-medium">
+                                  You haven't referred any members yet.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="py-12 text-center text-red-500 font-medium">
+                    Failed to load coordinator dashboard.
+                  </div>
+                )}
               </div>
             ) : (
               /* TAB: EDIT SETTINGS (hidden on print) */

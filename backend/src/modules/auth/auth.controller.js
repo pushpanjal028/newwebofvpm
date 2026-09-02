@@ -9,6 +9,9 @@ import {
   deleteProfileService,
   forgotPasswordSendOtpService,
   resetPasswordWithOtpService,
+  registerPhase3Service,
+  verifyEmailTokenService,
+  resendVerificationEmailService,
 } from "./auth.service.js";
 
 export const sendOtp = async (req, res) => {
@@ -143,4 +146,42 @@ export const resetPasswordWithOtp = async (req, res) => {
   }
 };
 
+export const registerPhase3 = async (req, res) => {
+  try {
+    const { name, email, password, phone, coordinatorCode } = req.body;
+    const result = await registerPhase3Service({
+      name,
+      email,
+      password,
+      phone,
+      coordinatorCode
+    });
+    res.json(result);
+  } catch (err) {
+    console.error("❌ Register Phase 3 controller error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const verifyEmailToken = async (req, res) => {
+  try {
+    const { token } = req.body;
+    const result = await verifyEmailTokenService(token);
+    res.json(result);
+  } catch (err) {
+    console.error("❌ Verify Email Token error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const resendVerificationEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const result = await resendVerificationEmailService(email);
+    res.json(result);
+  } catch (err) {
+    console.error("❌ Resend Verification Email error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
 
