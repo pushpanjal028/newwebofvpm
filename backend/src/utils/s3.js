@@ -19,7 +19,7 @@ const BUCKET_NAME = process.env.AWS_BUCKET_NAME || "";
  */
 export const generatePresignedPutUrl = async (key, contentType) => {
   const command = new PutObjectCommand({
-    Bucket: BUCKET_NAME,
+    Bucket: process.env.AWS_BUCKET_NAME || "",
     Key: key,
     ContentType: contentType,
   });
@@ -36,7 +36,7 @@ export const generatePresignedPutUrl = async (key, contentType) => {
  */
 export const generatePresignedGetUrl = async (key, expiresInSeconds = 900) => {
   const command = new GetObjectCommand({
-    Bucket: BUCKET_NAME,
+    Bucket: process.env.AWS_BUCKET_NAME || "",
     Key: key,
   });
 
@@ -49,7 +49,7 @@ export const generatePresignedGetUrl = async (key, expiresInSeconds = 900) => {
  */
 export const deleteS3Object = async (key) => {
   const command = new DeleteObjectCommand({
-    Bucket: BUCKET_NAME,
+    Bucket: process.env.AWS_BUCKET_NAME || "",
     Key: key,
   });
   await s3Client.send(command);
@@ -63,7 +63,7 @@ export const deleteS3Object = async (key) => {
  */
 export const uploadBufferToS3 = async (key, buffer, contentType) => {
   const command = new PutObjectCommand({
-    Bucket: BUCKET_NAME,
+    Bucket: process.env.AWS_BUCKET_NAME || "",
     Key: key,
     Body: buffer,
     ContentType: contentType,
