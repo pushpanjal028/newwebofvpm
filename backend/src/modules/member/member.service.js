@@ -1,6 +1,8 @@
 import crypto from "crypto";
+import mongoose from "mongoose";
 import User from "../../models/User.js";
 import Referral from "../../models/Referral.js";
+import MemberCard from "../../models/MemberCard.js";
 
 export const getPublicMembersService = async () => {
   return await User.find({
@@ -13,10 +15,15 @@ export const verifyMembershipIdService = async (membershipId) => {
   const member = await User.findOne({
     membershipId,
     approvalStatus: "approved",
-  }).select("name photo organization state city membershipId approvalStatus designation issueDate expiryDate");
+  }).select("name photo organization state city membershipId approvalStatus designation issueDate expiryDate").lean();
 
   if (!member) {
     throw new Error("Verification lookup failed: Member not found or unapproved.");
+  }
+  
+  const memberCard = await MemberCard.findOne({ userId: member._id });
+  if (memberCard) {
+    member.memberCard = memberCard;
   }
 
   return member;

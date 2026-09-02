@@ -7,6 +7,7 @@ import OTP from "../../models/OTP.js";
 import Referral from "../../models/Referral.js";
 import RegistrationAttempt from "../../models/RegistrationAttempt.js";
 import transporter from "../../config/mailer.js";
+import MemberCard from "../../models/MemberCard.js";
 
 export const sendOtpService = async (email) => {
   const existing = await User.findOne({ email });
@@ -210,10 +211,17 @@ ${message}`,
 };
 
 export const getCurrentProfileService = async (userId) => {
-  const user = await User.findById(userId).select("-password");
+  const user = await User.findById(userId).select("-password").lean();
   if (!user) {
     throw new Error("User not found");
   }
+  
+  // Fetch MemberCard if it exists
+  const memberCard = await MemberCard.findOne({ userId });
+  if (memberCard) {
+    user.memberCard = memberCard;
+  }
+  
   return user;
 };
 

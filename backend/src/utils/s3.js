@@ -54,3 +54,19 @@ export const deleteS3Object = async (key) => {
   });
   await s3Client.send(command);
 };
+
+/**
+ * Uploads a buffer directly to S3.
+ * @param {string} key - The S3 object key.
+ * @param {Buffer} buffer - The file buffer.
+ * @param {string} contentType - The MIME type.
+ */
+export const uploadBufferToS3 = async (key, buffer, contentType) => {
+  const command = new PutObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: key,
+    Body: buffer,
+    ContentType: contentType,
+  });
+  await s3Client.send(command);
+};

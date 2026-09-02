@@ -4,6 +4,17 @@ import Referral from "../../models/Referral.js";
 import Cashback from "../../models/Cashback.js";
 import mongoose from "mongoose";
 import transporter from "../../config/mailer.js";
+import MemberCard from "../../models/MemberCard.js";
+import { generateCardPDF } from "../member/cardGenerator.service.js";
+import { sendCardEmail } from "../member/cardEmail.service.js";
+import { uploadBufferToS3 } from "../../utils/s3.js";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 
 // Helper function to log actions
 export const logAdminAction = async (admin, action, targetUserId, details) => {
@@ -312,6 +323,66 @@ export const verifyMembershipService = async (adminUser, id, status) => {
   }
 
   await user.save();
+
+  if (status === "approved") {
+    try {
+      // Check if MemberCard already exists to ensure idempotency
+      let memberCard = await MemberCard.findOne({ userId: user._id });
+      
+      if (!memberCard) {
+        // Generate PDF
+        const pdfBuffer = await generateCardPDF({
+          membershipId: user.membershipId,
+          name: user.name,
+          designation: user.designation,
+          organization: user.organization,
+          city: user.city,
+          state: user.state,
+          phone: user.phone,
+          photoUrl: user.photo ? (user.photo.startsWith('http') ? user.photo : `${process.env.API_URL || 'http://localhost:5000'}/api/uploads/view/${user.photo}`) : null,
+          localPhotoPath: user.photo,
+          validFromStr: user.issueDate.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" }),
+          validUntilStr: user.expiryDate.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" }),
+        });
+
+        // Save PDF to S3 or Local
+        const pdfFilename = `member_card_${user.membershipId}_${Date.now()}.pdf`;
+        let pdfUrl = `uploads/${pdfFilename}`;
+        
+        if (process.env.AWS_BUCKET_NAME) {
+          await uploadBufferToS3(pdfUrl, pdfBuffer, "application/pdf");
+        } else {
+          const localPath = path.join(__dirname, "../../../uploads", pdfFilename);
+          fs.writeFileSync(localPath, pdfBuffer);
+        }
+
+        // Create MemberCard
+        memberCard = new MemberCard({
+          userId: user._id,
+          cardNumber: user.membershipId,
+          validFrom: user.issueDate,
+          validUntil: user.expiryDate,
+          pdfUrl: pdfUrl,
+        });
+        await memberCard.save();
+
+        // Send Email
+        try {
+          await sendCardEmail(user.email, user.name, pdfBuffer);
+          memberCard.emailSendStatus = "sent";
+          memberCard.emailSentAt = new Date();
+          await memberCard.save();
+        } catch (emailErr) {
+          memberCard.emailSendStatus = "failed";
+          memberCard.emailLastError = emailErr.message;
+          await memberCard.save();
+          console.error("❌ Email failed during I-Card generation, but DB state is safe:", emailErr);
+        }
+      }
+    } catch (cardErr) {
+      console.error("❌ I-Card generation failed, but member approval is safe:", cardErr);
+    }
+  }
 
   await logAdminAction(adminUser, `MEMBERSHIP_${status.toUpperCase()}`, user._id, {
     membershipId: user.membershipId,
