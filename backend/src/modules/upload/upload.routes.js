@@ -224,9 +224,18 @@ router.get("/document-url", auth, async (req, res) => {
 });
 
 // Secure GET Temporary URL redirect with local fallback
-router.get(/^\/view\/(.+)$/, (req, res, next) => {
+router.get(/^\/view\/(.+)$/, async (req, res, next) => {
   const key = req.params[0];
   if (key && key.includes("temp/")) {
+    try {
+      const isPhoto = await User.exists({ photo: key });
+      if (isPhoto) {
+        return next();
+      }
+    } catch (err) {
+      console.error("Error checking public photo", err);
+    }
+
     auth(req, res, async () => {
       try {
         if (!req.user) return res.status(401).json({ message: "Unauthorized" });
