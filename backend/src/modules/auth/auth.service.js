@@ -435,7 +435,10 @@ export const registerPhase3Service = async ({
     throw new Error("Registration attempt expired or invalid.");
   }
 
-  if (!attempt.keys.includes(photo) || !attempt.keys.includes(documentProof)) {
+  const isValidPhoto = attempt.keys.some(k => photo.endsWith(k));
+  const isValidDocument = attempt.keys.some(k => documentProof.endsWith(k));
+
+  if (!isValidPhoto || !isValidDocument) {
     throw new Error("Uploaded documents are invalid or do not belong to this registration session.");
   }
 

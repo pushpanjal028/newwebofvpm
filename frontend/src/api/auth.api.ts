@@ -25,7 +25,7 @@ export const initRegistration = async () => {
   return data;
 };
 
-export const getPresignedUploadUrl = async (filename: string, fileType: string, attemptId?: string, paymentAttemptId?: string): Promise<{ uploadUrl: string; key: string }> => {
+export const getPresignedUploadUrl = async (filename: string, fileType: string, attemptId?: string, paymentAttemptId?: string): Promise<{ uploadUrl: string; key: string; publicUrl: string }> => {
   const payload: any = { filename, fileType };
   if (attemptId) payload.attemptId = attemptId;
   if (paymentAttemptId) payload.paymentAttemptId = paymentAttemptId;

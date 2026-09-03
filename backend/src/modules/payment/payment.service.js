@@ -19,7 +19,9 @@ export const submitPaymentReceiptService = async (emailOrPhone, transactionId, p
     throw new Error("Payment attempt expired or invalid.");
   }
 
-  if (!attempt.keys.includes(paymentScreenshot)) {
+  const isValidScreenshot = attempt.keys.some(k => paymentScreenshot.endsWith(k));
+
+  if (!isValidScreenshot) {
     throw new Error("Uploaded payment screenshot is invalid or does not belong to this session.");
   }
 

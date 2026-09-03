@@ -12,8 +12,10 @@ import {
   getUploadUrl, clearAuth,
   getPublicGalleryPhotos, createGalleryPhoto, deleteGalleryPhoto,
   getPresignedUploadUrl, uploadFileToS3,
-  getAdminCashbacks, updateCashbackStatus
+  getAdminCashbacks, updateCashbackStatus, fetchSecureDocumentUrl
 } from "../../api";
+
+import ProtectedImage from "../../components/common/ProtectedImage";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -157,8 +159,26 @@ export default function AdminDashboard() {
   // Detail Inspector Modal
   const [inspectingMember, setInspectingMember] = useState<any | null>(null);
   
-  // Image Viewer Modal
+  // Image/Document Viewer Modal
   const [viewingFileUrl, setViewingFileUrl] = useState<string | null>(null);
+  const [viewingFileIsPdf, setViewingFileIsPdf] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState("");
+
+  const handleViewSecureDocument = async (fileKey: string) => {
+    setPreviewLoading(true);
+    setPreviewError("");
+    setViewingFileUrl(null);
+    setViewingFileIsPdf(fileKey.toLowerCase().endsWith(".pdf"));
+    try {
+      const url = await fetchSecureDocumentUrl(fileKey);
+      setViewingFileUrl(url);
+    } catch (err: any) {
+      setPreviewError(err.message || "Unable to load document.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
 
   // Edit Modal
   const [editingMember, setEditingMember] = useState<any | null>(null);
@@ -551,8 +571,8 @@ export default function AdminDashboard() {
                           <td className="py-4 px-6 flex items-center gap-3 min-w-[200px]">
                             <div className="h-9 w-9 bg-slate-200 rounded-full overflow-hidden flex-shrink-0 border">
                               {member.photo ? (
-                                <img
-                                  src={getUploadUrl(member.photo)}
+                                <ProtectedImage
+                                  fileKey={member.photo}
                                   alt={member.name}
                                   className="h-full w-full object-cover"
                                 />
@@ -999,7 +1019,7 @@ export default function AdminDashboard() {
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                         <button
-                          onClick={() => setViewingFileUrl(getUploadUrl(photo.imageUrl))}
+                          onClick={() => handleViewSecureDocument(photo.imageUrl)}
                           className="absolute top-2 right-2 p-1.5 bg-slate-950/80 hover:bg-slate-900 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
                           title="View image"
                         >
@@ -1062,8 +1082,8 @@ export default function AdminDashboard() {
                 <div className="flex items-center gap-4 border-b pb-4">
                   <div className="h-16 w-16 bg-slate-200 rounded-full overflow-hidden flex-shrink-0 border">
                     {inspectingMember.photo ? (
-                      <img
-                        src={getUploadUrl(inspectingMember.photo)}
+                      <ProtectedImage
+                        fileKey={inspectingMember.photo}
                         alt={inspectingMember.name}
                         className="h-full w-full object-cover"
                       />
@@ -1087,7 +1107,7 @@ export default function AdminDashboard() {
                     <div className="flex gap-2 flex-wrap">
                       {inspectingMember.photo && (
                         <button
-                          onClick={() => setViewingFileUrl(getUploadUrl(inspectingMember.photo))}
+                          onClick={() => handleViewSecureDocument(inspectingMember.photo)}
                           className="flex items-center gap-1 bg-slate-50 border p-2 rounded-xl text-xs hover:border-amber-300 font-bold transition-all text-slate-700"
                         >
                           <Eye className="h-3.5 w-3.5" /> Profile Photo
@@ -1095,7 +1115,7 @@ export default function AdminDashboard() {
                       )}
                       {inspectingMember.documentProof && (
                         <button
-                          onClick={() => setViewingFileUrl(getUploadUrl(inspectingMember.documentProof))}
+                          onClick={() => handleViewSecureDocument(inspectingMember.documentProof)}
                           className="flex items-center gap-1 bg-slate-50 border p-2 rounded-xl text-xs hover:border-amber-300 font-bold transition-all text-slate-700"
                         >
                           <FileText className="h-3.5 w-3.5" /> ID Doc Proof
@@ -1113,7 +1133,7 @@ export default function AdminDashboard() {
                           Reference ID: <strong className="font-mono text-amber-700 font-bold">{inspectingMember.paymentReferenceId}</strong>
                         </p>
                         <button
-                          onClick={() => setViewingFileUrl(getUploadUrl(inspectingMember.paymentScreenshot))}
+                          onClick={() => handleViewSecureDocument(inspectingMember.paymentScreenshot)}
                           className="flex items-center gap-1 bg-slate-50 border p-2 rounded-xl text-xs hover:border-amber-300 font-bold transition-all text-slate-700"
                         >
                           <Eye className="h-3.5 w-3.5" /> View Payment Screenshot
@@ -1301,35 +1321,71 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* MODAL: IMAGE VIEWER */}
-        {viewingFileUrl && (
+        {/* MODAL: IMAGE/DOCUMENT VIEWER */}
+        {(viewingFileUrl || previewLoading || previewError) && (
           <div
             className="fixed inset-0 bg-[#030712]/95 backdrop-blur-sm z-[60] flex flex-col items-center justify-center p-4"
-            onClick={() => setViewingFileUrl(null)}
+            onClick={() => {
+              setViewingFileUrl(null);
+              setPreviewLoading(false);
+              setPreviewError("");
+            }}
           >
-            <div className="relative max-w-3xl max-h-[85vh] overflow-hidden rounded-2xl bg-white/5 border border-white/10 shadow-2xl flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-              {viewingFileUrl.toLowerCase().endsWith(".pdf") ? (
-                <iframe
-                  src={viewingFileUrl}
-                  title="Document Proof"
-                  className="w-[80vw] h-[80vh] border-0"
-                />
-              ) : (
+            <div className="relative max-w-3xl min-w-[300px] max-h-[85vh] overflow-hidden rounded-2xl bg-white/5 border border-white/10 shadow-2xl flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+              
+              {previewLoading && (
+                <div className="flex flex-col items-center justify-center text-white/80 gap-3 py-16 px-8">
+                  <Loader2 className="w-8 h-8 animate-spin text-amber-400" />
+                  <p className="font-bold tracking-wide">Loading document...</p>
+                </div>
+              )}
+
+              {previewError && (
+                <div className="flex flex-col items-center justify-center text-red-400 gap-3 py-16 px-8">
+                  <XCircle className="w-10 h-10" />
+                  <p className="font-bold tracking-wide">{previewError}</p>
+                </div>
+              )}
+
+              {viewingFileUrl && viewingFileIsPdf && (
+                <div className="flex flex-col items-center gap-6 py-16 px-12 bg-slate-900/50 rounded-xl border border-white/5 w-full">
+                  <FileText className="w-16 h-16 text-amber-400" />
+                  <div className="text-center">
+                    <h3 className="text-white font-bold text-lg tracking-wide">PDF Document</h3>
+                    <p className="text-white/60 text-sm mt-1">This document has been securely authenticated.</p>
+                  </div>
+                  <a
+                    href={viewingFileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 px-6 py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold rounded-xl transition-all shadow-lg flex items-center gap-2"
+                  >
+                    <Eye className="w-4 h-4" /> View / Download PDF
+                  </a>
+                </div>
+              )}
+
+              {viewingFileUrl && !viewingFileIsPdf && (
                 <img
                   src={viewingFileUrl}
-                  alt="Proof inspect"
+                  alt="Secure Document Preview"
                   className="max-w-full max-h-[80vh] object-contain rounded-xl"
                 />
               )}
+
               <button
-                onClick={() => setViewingFileUrl(null)}
-                className="absolute top-4 right-4 p-2 bg-slate-950/80 hover:bg-slate-900 border border-white/10 text-white rounded-full transition-colors"
+                onClick={() => {
+                  setViewingFileUrl(null);
+                  setPreviewLoading(false);
+                  setPreviewError("");
+                }}
+                className="absolute top-4 right-4 p-2 bg-slate-950/80 hover:bg-slate-900 border border-white/10 text-white rounded-full transition-colors z-10"
               >
-                <X className="h-4.5 w-4.5" />
+                <X className="h-4 w-4" />
               </button>
             </div>
-            <p className="text-white/60 font-bold text-xs mt-3 select-none">
-              Click anywhere outside the container to exit review layout.
+            <p className="text-white/60 font-bold text-xs mt-4 tracking-widest select-none">
+              CLICK ANYWHERE OUTSIDE TO CLOSE
             </p>
           </div>
         )}

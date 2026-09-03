@@ -78,8 +78,12 @@ router.post("/presigned-url", async (req, res) => {
     }
 
     const uploadUrl = await generatePresignedPutUrl(key, fileType);
+    
+    const BUCKET_NAME = process.env.AWS_BUCKET_NAME || "";
+    const REGION = process.env.AWS_REGION || "us-east-1";
+    const publicUrl = `https://${BUCKET_NAME}.s3.${REGION}.amazonaws.com/${key}`;
 
-    res.json({ uploadUrl, key });
+    res.json({ uploadUrl, key, publicUrl });
   } catch (err) {
     console.error("❌ Generate PUT URL error:", err);
     res.status(500).json({ message: "Failed to generate upload URL." });
@@ -107,7 +111,11 @@ router.post("/cleanup", async (req, res) => {
       }
 
       // Safety check: ensure no active user is referencing this file
-      const userRef = await User.findOne({ $or: [{ photo: key }, { documentProof: key }] });
+      const BUCKET_NAME = process.env.AWS_BUCKET_NAME || "";
+      const REGION = process.env.AWS_REGION || "us-east-1";
+      const publicUrl = `https://${BUCKET_NAME}.s3.${REGION}.amazonaws.com/${key}`;
+      
+      const userRef = await User.findOne({ $or: [{ photo: publicUrl }, { documentProof: publicUrl }] });
       if (userRef) {
         console.warn(`⚠️ Warning: Key ${key} is referenced by an active user. Skipping deletion.`);
         continue;
@@ -151,7 +159,11 @@ router.post("/cleanup-payment", async (req, res) => {
       }
 
       // Safety check: ensure no active user is referencing this file
-      const userRef = await User.findOne({ paymentScreenshot: key });
+      const BUCKET_NAME = process.env.AWS_BUCKET_NAME || "";
+      const REGION = process.env.AWS_REGION || "us-east-1";
+      const publicUrl = `https://${BUCKET_NAME}.s3.${REGION}.amazonaws.com/${key}`;
+
+      const userRef = await User.findOne({ paymentScreenshot: publicUrl });
       if (userRef) {
         console.warn(`⚠️ Warning: Key ${key} is referenced by an active payment. Skipping deletion.`);
         continue;
@@ -171,6 +183,43 @@ router.post("/cleanup-payment", async (req, res) => {
   } catch (err) {
     console.error("❌ Cleanup payment error:", err);
     res.status(500).json({ message: "Failed to cleanup payment attempt." });
+  }
+});
+
+// Secure API to generate short-lived signed URLs for private documents
+router.get("/document-url", auth, async (req, res) => {
+  try {
+    const { key } = req.query;
+    if (!key) {
+      return res.status(400).json({ message: "Document key is required." });
+    }
+
+    // Only allow signed URLs for temp namespace (private documents)
+    if (!key.startsWith("temp/")) {
+      return res.status(400).json({ message: "Invalid document namespace." });
+    }
+
+    // Verify ownership or admin access
+    const owner = await User.findOne({ 
+      $or: [{ photo: key }, { documentProof: key }, { paymentScreenshot: key }] 
+    });
+
+    if (!req.user.isAdmin) {
+      if (!owner || owner._id.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: "Forbidden: You do not have access to this document." });
+      }
+    } else {
+      if (!owner) {
+        return res.status(403).json({ message: "Forbidden: Document does not belong to any valid user." });
+      }
+    }
+
+    // Generate short-lived signed URL (e.g., 5 minutes = 300 seconds)
+    const signedUrl = await generatePresignedGetUrl(key, 300);
+    res.json({ signedUrl });
+  } catch (err) {
+    console.error("❌ Generate document URL error:", err);
+    res.status(500).json({ message: "Failed to generate document URL." });
   }
 });
 

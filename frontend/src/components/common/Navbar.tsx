@@ -2,8 +2,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, Globe, LogOut, ChevronDown } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getUploadUrl } from "../../api";
 import Logo from "../../assets/logo perfect.png";
+import ProtectedImage from "./ProtectedImage";
 
 declare global {
   interface Window {
@@ -177,7 +177,7 @@ export default function Navbar() {
                 >
                   <div className="h-7 w-7 rounded-full bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center overflow-hidden">
                     {userProfile.photo ? (
-                      <img src={getUploadUrl(userProfile.photo)} alt="avatar" className="h-full w-full object-cover" />
+                      <ProtectedImage fileKey={userProfile.photo} alt="avatar" className="h-full w-full object-cover" />
                     ) : (
                       userProfile.name.charAt(0).toUpperCase()
                     )}

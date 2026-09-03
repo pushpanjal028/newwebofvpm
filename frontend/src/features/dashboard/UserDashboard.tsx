@@ -14,10 +14,12 @@ import {
   getUploadUrl,
   clearAuth,
   getPresignedUploadUrl,
-  uploadFileToS3
+  uploadFileToS3,
+  fetchSecureDocumentUrl
 } from "../../api";
 import { getCoordinatorDashboard } from "../../api/member.api";
 import Logo from "../../assets/logo perfect.png";
+import ProtectedImage from "../../components/common/ProtectedImage";
 
 interface ProfileData {
   _id: string;
@@ -82,8 +84,18 @@ export default function UserDashboard() {
 
   // Modal file view & Delete modal
   const [viewingFileUrl, setViewingFileUrl] = useState<string | null>(null);
+  const [securePdfUrl, setSecurePdfUrl] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const handleViewSecureFile = async (key: string) => {
+    try {
+      const signedUrl = await fetchSecureDocumentUrl(key);
+      setViewingFileUrl(signedUrl);
+    } catch (err) {
+      console.error("Failed to load secure document", err);
+    }
+  };
 
   const fetchProfileData = async () => {
     setLoading(true);
@@ -129,6 +141,14 @@ export default function UserDashboard() {
   useEffect(() => {
     fetchProfileData();
   }, []);
+
+  useEffect(() => {
+    if (profile?.memberCard?.pdfUrl) {
+      fetchSecureDocumentUrl(profile.memberCard.pdfUrl)
+        .then(setSecurePdfUrl)
+        .catch(console.error);
+    }
+  }, [profile?.memberCard?.pdfUrl]);
 
   const handleCopyCode = () => {
     if (coordinatorData?.coordinatorCode) {
@@ -386,8 +406,8 @@ export default function UserDashboard() {
                     
                     <div className="h-16 w-16 bg-slate-100 rounded-full overflow-hidden flex-shrink-0 border">
                       {profile.photo ? (
-                        <img
-                          src={getUploadUrl(profile.photo)}
+                        <ProtectedImage
+                          fileKey={profile.photo}
                           alt={profile.name}
                           className="h-full w-full object-cover"
                         />
@@ -484,7 +504,7 @@ export default function UserDashboard() {
                             </div>
                           </div>
                           <button
-                            onClick={() => setViewingFileUrl(getUploadUrl(profile.photo!))}
+                            onClick={() => handleViewSecureFile(profile.photo!)}
                             className="p-1.5 bg-white hover:bg-amber-50 border hover:border-amber-300 text-slate-600 hover:text-amber-700 rounded-xl transition-all shadow-sm flex"
                           >
                             <Eye className="h-4 w-4" />
@@ -502,7 +522,7 @@ export default function UserDashboard() {
                             </div>
                           </div>
                           <button
-                            onClick={() => setViewingFileUrl(getUploadUrl(profile.documentProof!))}
+                            onClick={() => handleViewSecureFile(profile.documentProof!)}
                             className="p-1.5 bg-white hover:bg-amber-50 border hover:border-amber-300 text-slate-600 hover:text-amber-700 rounded-xl transition-all shadow-sm flex"
                           >
                             <Eye className="h-4 w-4" />
@@ -524,7 +544,7 @@ export default function UserDashboard() {
                         </span>
                         <div className="flex items-center gap-2">
                           <a
-                            href={profile.memberCard && profile.memberCard.pdfUrl ? getUploadUrl(profile.memberCard.pdfUrl) : "#"}
+                            href={securePdfUrl || "#"}
                             download={`VPMH_MemberCard_${profile.membershipId}.pdf`}
                             target="_blank"
                             rel="noreferrer"
@@ -538,9 +558,9 @@ export default function UserDashboard() {
 
                       {/* Printable ID Card */}
                       <div className="w-full max-w-[380px] h-[600px] bg-white border-2 border-slate-350 rounded-3xl shadow-2xl overflow-hidden relative">
-                        {profile.memberCard && profile.memberCard.pdfUrl ? (
+                        {securePdfUrl ? (
                           <iframe
-                            src={getUploadUrl(profile.memberCard.pdfUrl)}
+                            src={securePdfUrl}
                             className="w-full h-full border-none"
                             title="Official Member I-Card"
                           />

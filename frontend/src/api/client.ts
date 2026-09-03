@@ -54,7 +54,8 @@ export const getUploadUrl = (relativePath: string) => {
     key = key.substring(1);
   }
   
-  if (!key.toLowerCase().startsWith("uploads/")) {
+  // Do not incorrectly prefix existing valid namespaces like 'temp/'
+  if (!key.toLowerCase().startsWith("uploads/") && !key.toLowerCase().startsWith("temp/")) {
     key = `uploads/${key}`;
   }
   
@@ -73,4 +74,10 @@ export const uploadFileToS3 = async (presignedUrl: string, file: File) => {
     throw new Error(`S3 upload failed: ${res.statusText}`);
   }
   return true;
+};
+
+export const fetchSecureDocumentUrl = async (key: string) => {
+  if (!key || !key.startsWith("temp/")) return getUploadUrl(key);
+  const data = await fetchWithAuth(`/uploads/document-url?key=${encodeURIComponent(key)}`);
+  return data.signedUrl;
 };
