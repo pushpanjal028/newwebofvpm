@@ -25,9 +25,10 @@ export const initRegistration = async () => {
   return data;
 };
 
-export const getPresignedUploadUrl = async (filename: string, fileType: string, attemptId?: string): Promise<{ uploadUrl: string; key: string }> => {
+export const getPresignedUploadUrl = async (filename: string, fileType: string, attemptId?: string, paymentAttemptId?: string): Promise<{ uploadUrl: string; key: string }> => {
   const payload: any = { filename, fileType };
   if (attemptId) payload.attemptId = attemptId;
+  if (paymentAttemptId) payload.paymentAttemptId = paymentAttemptId;
 
   const res = await fetch(`${BASE_URL}/uploads/presigned-url`, {
     method: "POST",
@@ -50,6 +51,31 @@ export const cleanupRegistrationAttempt = async (attemptId: string) => {
   const data = await res.json();
   if (!res.ok) {
     throw new Error(data.message || "Failed to cleanup registration attempt");
+  }
+  return data;
+};
+
+export const initPayment = async () => {
+  const res = await fetch(`${BASE_URL}/uploads/init-payment`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to initialize payment");
+  }
+  return data;
+};
+
+export const cleanupPaymentAttempt = async (paymentAttemptId: string) => {
+  const res = await fetch(`${BASE_URL}/uploads/cleanup-payment`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ paymentAttemptId }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to cleanup payment attempt");
   }
   return data;
 };

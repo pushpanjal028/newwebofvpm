@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { CreditCard, Shield, CheckCircle, Info, Upload, AlertCircle, Building, QrCode } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { submitPayment, getPresignedUploadUrl, uploadFileToS3 } from "../../api";
+import { submitPayment, getPresignedUploadUrl, uploadFileToS3, initPayment } from "../../api";
 import qrCodeImage from "../../assets/qr code.jpeg";
 
 export default function Payment() {
@@ -12,29 +12,88 @@ export default function Payment() {
 
   const [emailOrPhone, setEmailOrPhone] = useState(emailParam);
   const [transactionId, setTransactionId] = useState("");
-  const [screenshot, setScreenshot] = useState<File | null>(null);
+  const [paymentAttemptId, setPaymentAttemptId] = useState("");
+  const [screenshotKey, setScreenshotKey] = useState("");
+  const [screenshotName, setScreenshotName] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
+  // Load draft on mount
+  useEffect(() => {
+    try {
+      const draftJSON = localStorage.getItem("vpmh_payment_draft");
+      if (draftJSON) {
+        const draft = JSON.parse(draftJSON);
+        const now = new Date().getTime();
+        // 24 hours expiry
+        if (now - draft.timestamp < 24 * 60 * 60 * 1000) {
+          if (draft.emailOrPhone) setEmailOrPhone(draft.emailOrPhone);
+          if (draft.transactionId) setTransactionId(draft.transactionId);
+          if (draft.paymentAttemptId) setPaymentAttemptId(draft.paymentAttemptId);
+          if (draft.screenshotKey) setScreenshotKey(draft.screenshotKey);
+          if (draft.screenshotName) setScreenshotName(draft.screenshotName);
+        } else {
+          localStorage.removeItem("vpmh_payment_draft");
+        }
+      }
+    } catch (err) {
+      console.error("Error parsing payment draft", err);
+    }
+  }, []);
+
+  // Save draft on change
+  useEffect(() => {
+    const draft = {
+      emailOrPhone,
+      transactionId,
+      paymentAttemptId,
+      screenshotKey,
+      screenshotName,
+      timestamp: new Date().getTime(),
+    };
+    localStorage.setItem("vpmh_payment_draft", JSON.stringify(draft));
+  }, [emailOrPhone, transactionId, paymentAttemptId, screenshotKey, screenshotName]);
+
   // Sync email parameter if it changes
   useEffect(() => {
-    if (emailParam) {
+    if (emailParam && !emailOrPhone) {
       setEmailOrPhone(emailParam);
     }
   }, [emailParam]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setScreenshot(e.target.files[0]);
+      const file = e.target.files[0];
+      setLoading(true);
+      setError("");
+      try {
+        let currentAttemptId = paymentAttemptId;
+        if (!currentAttemptId) {
+          const { paymentAttemptId: newAttemptId } = await initPayment();
+          currentAttemptId = newAttemptId;
+          setPaymentAttemptId(newAttemptId);
+        }
+
+        const presigned = await getPresignedUploadUrl(file.name, file.type, undefined, currentAttemptId);
+        await uploadFileToS3(presigned.uploadUrl, file);
+        
+        setScreenshotKey(presigned.key);
+        setScreenshotName(file.name);
+      } catch (err: any) {
+        console.error("❌ File upload error:", err);
+        setError("Payment screenshot upload failed. Please try again.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!screenshot) {
-      setError("Please select a screenshot of the payment receipt.");
+    if (!screenshotKey) {
+      setError("Please select and wait for the screenshot of the payment receipt to upload.");
       return;
     }
     if (!emailOrPhone.trim()) {
@@ -45,30 +104,31 @@ export default function Payment() {
       setError("Please enter the transaction reference ID.");
       return;
     }
+    if (!paymentAttemptId) {
+      setError("Invalid payment attempt. Please refresh and try again.");
+      return;
+    }
 
     setLoading(true);
     setError("");
 
     try {
-      // 1. Get PUT URL and S3 Key from backend
-      const presigned = await getPresignedUploadUrl(screenshot.name, screenshot.type);
-
-      // 2. Upload file directly to S3
-      await uploadFileToS3(presigned.uploadUrl, screenshot);
-
-      // 3. Submit reference and S3 key to backend as JSON
       const payload = {
         emailOrPhone,
         transactionId,
-        paymentScreenshot: presigned.key,
+        paymentScreenshot: screenshotKey,
+        paymentAttemptId,
       };
 
       await submitPayment(payload);
       setSuccess(true);
 
-      // Clear fields
+      // Clear draft on success
+      localStorage.removeItem("vpmh_payment_draft");
+      
       setTransactionId("");
-      setScreenshot(null);
+      setScreenshotKey("");
+      setScreenshotName("");
 
       setTimeout(() => {
         navigate(`/success?emailOrPhone=${encodeURIComponent(emailOrPhone)}`);
@@ -108,6 +168,10 @@ export default function Payment() {
               <p className="text-xs text-slate-500 mt-1">
                 Follow instructions below to transfer standard registration fees.
               </p>
+              <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-xs font-semibold flex items-center gap-2">
+                <Info className="h-4 w-4 shrink-0 text-amber-600" />
+                Your details are saved automatically. You can safely switch to your UPI app and return here.
+              </div>
             </div>
 
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
@@ -261,13 +325,12 @@ export default function Payment() {
                   <input
                     type="file"
                     accept="image/*"
-                    required
                     onChange={handleFileChange}
                     className="block w-full text-[10px] text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100"
                   />
-                  {screenshot && (
+                  {screenshotKey && (
                     <p className="text-[10px] text-green-600 font-bold mt-1.5 truncate">
-                      ✓ Selected: {screenshot.name}
+                      ✓ Screenshot uploaded ({screenshotName || "saved"})
                     </p>
                   )}
                 </div>

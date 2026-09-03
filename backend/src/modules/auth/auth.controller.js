@@ -148,13 +148,20 @@ export const resetPasswordWithOtp = async (req, res) => {
 
 export const registerPhase3 = async (req, res) => {
   try {
-    const { name, email, password, phone, coordinatorCode } = req.body;
+    const { name, email, password, phone, organization, state, city, designation, photo, documentProof, coordinatorCode, attemptId } = req.body;
     const result = await registerPhase3Service({
       name,
       email,
       password,
       phone,
-      coordinatorCode
+      organization,
+      state,
+      city,
+      designation,
+      photo,
+      documentProof,
+      coordinatorCode,
+      attemptId
     });
     res.json(result);
   } catch (err) {

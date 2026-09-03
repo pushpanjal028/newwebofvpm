@@ -5,7 +5,9 @@ import { fileURLToPath } from "url";
 import crypto from "crypto";
 import { generatePresignedPutUrl, generatePresignedGetUrl, deleteS3Object } from "../../utils/s3.js";
 import RegistrationAttempt from "../../models/RegistrationAttempt.js";
+import PaymentAttempt from "../../models/PaymentAttempt.js";
 import User from "../../models/User.js";
+import auth from "../../middlewares/auth.js";
 
 const router = express.Router();
 
@@ -23,6 +25,19 @@ router.post("/init-registration", async (req, res) => {
   } catch (err) {
     console.error("❌ Init registration error:", err);
     res.status(500).json({ message: "Failed to initialize registration." });
+  }
+});
+
+// Initialize secure payment attempt
+router.post("/init-payment", async (req, res) => {
+  try {
+    const paymentAttemptId = crypto.randomUUID();
+    const attempt = new PaymentAttempt({ paymentAttemptId });
+    await attempt.save();
+    res.json({ paymentAttemptId });
+  } catch (err) {
+    console.error("❌ Init payment error:", err);
+    res.status(500).json({ message: "Failed to initialize payment." });
   }
 });
 
@@ -47,6 +62,15 @@ router.post("/presigned-url", async (req, res) => {
         return res.status(400).json({ message: "Invalid or expired registration attempt." });
       }
       key = `temp/registration/${attemptId}/${basename}-${uniqueSuffix}${ext}`;
+      attempt.keys.push(key);
+      await attempt.save();
+    } else if (req.body.paymentAttemptId) {
+      const { paymentAttemptId } = req.body;
+      const attempt = await PaymentAttempt.findOne({ paymentAttemptId });
+      if (!attempt) {
+        return res.status(400).json({ message: "Invalid or expired payment attempt." });
+      }
+      key = `temp/payment/${paymentAttemptId}/${basename}-${uniqueSuffix}${ext}`;
       attempt.keys.push(key);
       await attempt.save();
     } else {
@@ -106,8 +130,75 @@ router.post("/cleanup", async (req, res) => {
   }
 });
 
+// Secure S3 Cleanup for failed payment attempts
+router.post("/cleanup-payment", async (req, res) => {
+  try {
+    const { paymentAttemptId } = req.body;
+    if (!paymentAttemptId) {
+      return res.status(400).json({ message: "paymentAttemptId is required." });
+    }
+
+    const attempt = await PaymentAttempt.findOne({ paymentAttemptId });
+    if (!attempt) {
+      return res.status(404).json({ message: "Attempt not found or already cleaned up." });
+    }
+
+    let deletedCount = 0;
+    for (const key of attempt.keys) {
+      // Safety check: ensure key belongs to the attempt namespace
+      if (!key.startsWith(`temp/payment/${paymentAttemptId}/`)) {
+        continue;
+      }
+
+      // Safety check: ensure no active user is referencing this file
+      const userRef = await User.findOne({ paymentScreenshot: key });
+      if (userRef) {
+        console.warn(`⚠️ Warning: Key ${key} is referenced by an active payment. Skipping deletion.`);
+        continue;
+      }
+
+      try {
+        await deleteS3Object(key);
+        deletedCount++;
+      } catch (s3Err) {
+        console.error(`❌ Failed to delete S3 object ${key}:`, s3Err);
+      }
+    }
+
+    await PaymentAttempt.deleteOne({ _id: attempt._id });
+
+    res.json({ message: "Cleanup successful.", deletedCount });
+  } catch (err) {
+    console.error("❌ Cleanup payment error:", err);
+    res.status(500).json({ message: "Failed to cleanup payment attempt." });
+  }
+});
+
 // Secure GET Temporary URL redirect with local fallback
-router.get(/^\/view\/(.+)$/, async (req, res) => {
+router.get(/^\/view\/(.+)$/, (req, res, next) => {
+  const key = req.params[0];
+  if (key && key.includes("temp/")) {
+    auth(req, res, async () => {
+      try {
+        if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+        const owner = await User.findOne({ $or: [{ photo: key }, { documentProof: key }, { paymentScreenshot: key }] });
+        
+        if (!req.user.isAdmin) {
+          if (!owner || owner._id.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: "Forbidden" });
+          }
+        }
+        
+        next();
+      } catch (dbErr) {
+        return res.status(500).json({ message: "Internal server error" });
+      }
+    });
+  } else {
+    next();
+  }
+}, async (req, res) => {
   try {
     const key = req.params[0];
 

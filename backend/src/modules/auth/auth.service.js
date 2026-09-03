@@ -418,6 +418,27 @@ export const registerPhase3Service = async ({
     throw new Error("Name, email, password, and phone are required.");
   }
 
+  if (!photo) {
+    throw new Error("Profile photo is required.");
+  }
+
+  if (!documentProof) {
+    throw new Error("ID/Document proof is required.");
+  }
+
+  if (!attemptId) {
+    throw new Error("Registration attempt ID is required for security verification.");
+  }
+
+  const attempt = await RegistrationAttempt.findOne({ attemptId });
+  if (!attempt) {
+    throw new Error("Registration attempt expired or invalid.");
+  }
+
+  if (!attempt.keys.includes(photo) || !attempt.keys.includes(documentProof)) {
+    throw new Error("Uploaded documents are invalid or do not belong to this registration session.");
+  }
+
   const existing = await User.findOne({ email });
   if (existing) {
     throw new Error("User already exists with this email.");

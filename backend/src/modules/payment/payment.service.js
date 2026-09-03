@@ -1,12 +1,26 @@
+import PaymentAttempt from "../../models/PaymentAttempt.js";
 import User from "../../models/User.js";
 
-export const submitPaymentReceiptService = async (emailOrPhone, transactionId, paymentScreenshot) => {
+export const submitPaymentReceiptService = async (emailOrPhone, transactionId, paymentScreenshot, paymentAttemptId) => {
   if (!emailOrPhone || !transactionId) {
     throw new Error("Email or Phone and Transaction/Reference ID are required.");
   }
 
   if (!paymentScreenshot) {
     throw new Error("Payment screenshot is required.");
+  }
+
+  if (!paymentAttemptId) {
+    throw new Error("Payment attempt ID is required for security verification.");
+  }
+
+  const attempt = await PaymentAttempt.findOne({ paymentAttemptId });
+  if (!attempt) {
+    throw new Error("Payment attempt expired or invalid.");
+  }
+
+  if (!attempt.keys.includes(paymentScreenshot)) {
+    throw new Error("Uploaded payment screenshot is invalid or does not belong to this session.");
   }
 
   // Check duplicate transaction ID

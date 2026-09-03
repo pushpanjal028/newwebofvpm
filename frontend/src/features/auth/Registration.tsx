@@ -19,13 +19,72 @@ export default function Registration() {
   });
 
   const [showPassword, setShowPassword] = useState(false);
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [documentProof, setDocumentProof] = useState<File | null>(null);
+  const [attemptId, setAttemptId] = useState<string | null>(null);
+  const [photoKey, setPhotoKey] = useState("");
+  const [photoName, setPhotoName] = useState("");
+  const [documentProofKey, setDocumentProofKey] = useState("");
+  const [documentProofName, setDocumentProofName] = useState("");
 
   const [loading, setLoading] = useState(false);
-
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+
+  // Load draft on mount
+  useEffect(() => {
+    try {
+      const draftJSON = localStorage.getItem("vpmh_registration_draft");
+      if (draftJSON) {
+        const draft = JSON.parse(draftJSON);
+        const now = new Date().getTime();
+        // 24 hours expiry
+        if (now - draft.timestamp < 24 * 60 * 60 * 1000) {
+          setFormData((prev) => ({
+            ...prev,
+            fullName: draft.formData?.fullName || "",
+            email: draft.formData?.email || "",
+            phone: draft.formData?.phone || "",
+            state: draft.formData?.state || "",
+            city: draft.formData?.city || "",
+            designation: draft.formData?.designation || "",
+            coordinatorCode: draft.formData?.coordinatorCode || "",
+            // explicitly do NOT restore password
+          }));
+          if (draft.attemptId) setAttemptId(draft.attemptId);
+          if (draft.photoKey) setPhotoKey(draft.photoKey);
+          if (draft.photoName) setPhotoName(draft.photoName);
+          if (draft.documentProofKey) setDocumentProofKey(draft.documentProofKey);
+          if (draft.documentProofName) setDocumentProofName(draft.documentProofName);
+        } else {
+          localStorage.removeItem("vpmh_registration_draft");
+        }
+      }
+    } catch (err) {
+      console.error("Error parsing registration draft", err);
+    }
+  }, []);
+
+  // Save draft on change
+  useEffect(() => {
+    const draft = {
+      formData: {
+        fullName: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        state: formData.state,
+        city: formData.city,
+        designation: formData.designation,
+        coordinatorCode: formData.coordinatorCode,
+        // No password saved
+      },
+      attemptId,
+      photoKey,
+      photoName,
+      documentProofKey,
+      documentProofName,
+      timestamp: new Date().getTime(),
+    };
+    localStorage.setItem("vpmh_registration_draft", JSON.stringify(draft));
+  }, [formData.fullName, formData.email, formData.phone, formData.state, formData.city, formData.designation, formData.coordinatorCode, attemptId, photoKey, photoName, documentProofKey, documentProofName]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -34,44 +93,85 @@ export default function Registration() {
     });
   };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setPhoto(e.target.files[0]);
+      const file = e.target.files[0];
+      setLoading(true);
+      setError("");
+      try {
+        let currentAttemptId = attemptId;
+        if (!currentAttemptId) {
+          const res = await initRegistration();
+          currentAttemptId = res.attemptId;
+          setAttemptId(res.attemptId);
+        }
+
+        const presigned = await getPresignedUploadUrl(file.name, file.type, currentAttemptId);
+        await uploadFileToS3(presigned.uploadUrl, file);
+        
+        setPhotoKey(presigned.key);
+        setPhotoName(file.name);
+      } catch (err: any) {
+        console.error("❌ Profile photo upload error:", err);
+        setError("Profile photo upload failed. Please try again.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDocumentChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setDocumentProof(e.target.files[0]);
+      const file = e.target.files[0];
+      setLoading(true);
+      setError("");
+      try {
+        let currentAttemptId = attemptId;
+        if (!currentAttemptId) {
+          const res = await initRegistration();
+          currentAttemptId = res.attemptId;
+          setAttemptId(res.attemptId);
+        }
+
+        const presigned = await getPresignedUploadUrl(file.name, file.type, currentAttemptId);
+        await uploadFileToS3(presigned.uploadUrl, file);
+        
+        setDocumentProofKey(presigned.key);
+        setDocumentProofName(file.name);
+      } catch (err: any) {
+        console.error("❌ Document upload error:", err);
+        setError("ID/Document proof upload failed. Please try again.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  // Submit full registration details with S3 cleanup safety
+  // Submit full registration details
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!photo || !documentProof) {
-      setError("Please upload both your Profile Photo and ID/Document Proof.");
+    if (!photoKey && !documentProofKey) {
+      setError("Please upload your profile photo and ID/document proof.");
+      return;
+    }
+    if (!photoKey) {
+      setError("Please upload your profile photo.");
+      return;
+    }
+    if (!documentProofKey) {
+      setError("Please upload your ID/document proof.");
+      return;
+    }
+    if (!attemptId) {
+      setError("Registration attempt invalid. Please refresh and try again.");
       return;
     }
 
     setLoading(true);
     setError("");
-    let currentAttemptId: string | null = null;
 
     try {
-      // 1. Initialize Registration Attempt to get secure namespace ID
-      const { attemptId } = await initRegistration();
-      currentAttemptId = attemptId;
-
-      // 2. Request PUT URLs and S3 Keys from backend using attemptId
-      const photoPresigned = await getPresignedUploadUrl(photo!.name, photo!.type, attemptId);
-      const docPresigned = await getPresignedUploadUrl(documentProof!.name, documentProof!.type, attemptId);
-
-      // 3. Upload both files directly to S3
-      await uploadFileToS3(photoPresigned.uploadUrl, photo!);
-      await uploadFileToS3(docPresigned.uploadUrl, documentProof!);
-
-      // 4. Post registration data (with S3 keys) to backend as JSON
+      // Post registration data (with S3 keys) to backend as JSON
       const payload = {
         name: formData.fullName,
         email: formData.email,
@@ -80,14 +180,17 @@ export default function Registration() {
         city: formData.city,
         designation: formData.designation,
         password: formData.password,
-        photo: photoPresigned.key,
-        documentProof: docPresigned.key,
+        photo: photoKey,
+        documentProof: documentProofKey,
         coordinatorCode: formData.coordinatorCode || undefined,
         attemptId,
       };
 
       await registerUserPhase3(payload);
       setSuccess(true);
+
+      // Clear draft on success
+      localStorage.removeItem("vpmh_registration_draft");
       
       // Auto-redirect to payment page with email prepopulated after 4 seconds
       setTimeout(() => {
@@ -97,16 +200,6 @@ export default function Registration() {
     } catch (err: any) {
       console.error("❌ Registration error:", err);
       setError(err.message || "Registration failed. Please check your details and try again.");
-      
-      // 5. Cleanup S3 files if the registration or upload process failed
-      if (currentAttemptId) {
-        try {
-          await cleanupRegistrationAttempt(currentAttemptId);
-          console.log("🧹 Cleaned up temporary S3 files for failed attempt.");
-        } catch (cleanupErr) {
-          console.error("Failed to cleanup S3 files:", cleanupErr);
-        }
-      }
     } finally {
       setLoading(false);
     }
@@ -132,12 +225,16 @@ export default function Registration() {
               <UserPlus className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-slate-900 tracking-wide">
-                Journalist Registration
-              </h1>
+              <h2 className="text-2xl font-black text-slate-900">
+                Official Membership Registration
+              </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Join the organization as an authorized press correspondent.
+                Complete all required fields below to initiate your membership.
               </p>
+              <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-xs font-semibold flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
+                Your details are saved automatically. You can safely switch apps or refresh the page without losing your progress.
+              </div>
             </div>
           </div>
 
@@ -338,13 +435,13 @@ export default function Registration() {
                   <input
                     type="file"
                     accept="image/jpeg, image/png"
-                    required
+                    required={!photoKey}
                     onChange={handlePhotoChange}
                     className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100"
                   />
-                  {photo && (
+                  {photoKey && (
                     <p className="text-[10px] text-green-600 font-bold mt-2 truncate">
-                      ✓ Selected: {photo.name}
+                      ✓ Profile photo uploaded ({photoName || "saved"})
                     </p>
                   )}
                 </div>
@@ -360,13 +457,13 @@ export default function Registration() {
                   <input
                     type="file"
                     accept="image/jpeg, image/png, application/pdf"
-                    required
+                    required={!documentProofKey}
                     onChange={handleDocumentChange}
                     className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100"
                   />
-                  {documentProof && (
+                  {documentProofKey && (
                     <p className="text-[10px] text-green-600 font-bold mt-2 truncate">
-                      ✓ Selected: {documentProof.name}
+                      ✓ ID/document proof uploaded ({documentProofName || "saved"})
                     </p>
                   )}
                 </div>
