@@ -149,6 +149,10 @@ export const verifyPaymentService = async (adminUser, id, status) => {
     throw new Error("User not found");
   }
 
+  if (status === "paid" && (!user.paymentReferenceId || !user.paymentScreenshot)) {
+    throw new Error("Payment reference ID and payment screenshot are required before approving payment.");
+  }
+
   user.paymentStatus = status;
   user.paymentVerifiedAt = new Date();
   user.verifiedBy = adminUser._id;
@@ -290,6 +294,16 @@ export const verifyMembershipService = async (adminUser, id, status) => {
   const user = await User.findById(id);
   if (!user) {
     throw new Error("User not found");
+  }
+
+  if (status === "approved") {
+    if (user.paymentStatus !== "paid") {
+      throw new Error("Payment must be verified as paid before approving membership.");
+    }
+
+    if (!user.photo || !user.documentProof) {
+      throw new Error("Profile photo and ID/document proof are required before approving membership.");
+    }
   }
 
   user.approvalStatus = status;

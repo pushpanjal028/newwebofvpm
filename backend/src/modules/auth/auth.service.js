@@ -76,8 +76,8 @@ export const registerUserService = async ({
   documentProof,
   documentProofBack
 }) => {
-  if (!name || !email || !password || !phone || !state || !city || !designation || !otp) {
-    throw new Error("All required fields and OTP verification code must be provided.");
+  if (!name || !email || !password || !phone || !state || !city || !designation || !otp || !photo || !documentProof) {
+    throw new Error("All required fields, profile photo, ID/document proof, and OTP verification code must be provided.");
   }
 
   // Check OTP validity
