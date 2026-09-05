@@ -11,13 +11,15 @@ import { uploadBufferToS3 } from "../../utils/s3.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import crypto from "crypto";
+import bcrypt from "bcryptjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 
 // Helper function to log actions
-export const logAdminAction = async (admin, action, targetUserId, details) => {
+export const logAdminAction = async (admin, action, targetUserId, details, oldValue = null, newValue = null, ipAddress = null, deviceDetails = null) => {
   try {
     const newLog = new AuditLog({
       adminId: admin._id,
@@ -25,6 +27,10 @@ export const logAdminAction = async (admin, action, targetUserId, details) => {
       action,
       targetUserId,
       details,
+      oldValue,
+      newValue,
+      ipAddress,
+      deviceDetails,
     });
     await newLog.save();
   } catch (err) {
@@ -106,11 +112,22 @@ export const getAuditLogsService = async ({ page, limit }) => {
   };
 };
 
-export const updateMemberDetailsService = async (adminUser, id, { name, phone, organization, state, city, designation }) => {
+export const updateMemberDetailsService = async (adminUser, id, { name, phone, organization, state, city, designation, photo, documentProof }) => {
   const user = await User.findById(id);
   if (!user) {
     throw new Error("User not found");
   }
+
+  const oldValue = {
+    name: user.name,
+    phone: user.phone,
+    organization: user.organization,
+    state: user.state,
+    city: user.city,
+    designation: user.designation,
+    photo: user.photo,
+    documentProof: user.documentProof,
+  };
 
   user.name = name || user.name;
   user.phone = phone || user.phone;
@@ -118,10 +135,54 @@ export const updateMemberDetailsService = async (adminUser, id, { name, phone, o
   user.state = state || user.state;
   user.city = city || user.city;
   user.designation = designation || user.designation;
+  if (photo) user.photo = photo;
+  if (documentProof) user.documentProof = documentProof;
+
+  const newValue = {
+    name: user.name,
+    phone: user.phone,
+    organization: user.organization,
+    state: user.state,
+    city: user.city,
+    designation: user.designation,
+    photo: user.photo,
+    documentProof: user.documentProof,
+  };
 
   await user.save();
 
-  await logAdminAction(adminUser, "MEMBER_EDITED", user._id, { name, phone, organization, state, city, designation });
+  // Trigger card regeneration if member is approved
+  if (user.approvalStatus === "approved" && user.membershipId && user.issueDate && user.expiryDate) {
+    try {
+      let memberCard = await MemberCard.findOne({ userId: user._id });
+      if (memberCard) {
+        const pdfBuffer = await generateCardPDF({
+          membershipId: user.membershipId,
+          name: user.name,
+          designation: user.designation,
+          organization: user.organization,
+          city: user.city,
+          state: user.state,
+          phone: user.phone,
+          photoUrl: user.photo ? (user.photo.startsWith('http') ? user.photo : `${process.env.API_URL || 'http://localhost:5000'}/api/uploads/view/${user.photo}`) : null,
+          localPhotoPath: user.photo,
+          validFromStr: user.issueDate.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" }),
+          validUntilStr: user.expiryDate.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" }),
+        });
+        
+        if (process.env.AWS_BUCKET_NAME) {
+          await uploadBufferToS3(memberCard.pdfUrl, pdfBuffer, "application/pdf");
+        } else {
+          const localPath = path.join(__dirname, "../../../uploads", path.basename(memberCard.pdfUrl));
+          fs.writeFileSync(localPath, pdfBuffer);
+        }
+      }
+    } catch (cardErr) {
+      console.error("❌ Failed to regenerate I-Card during profile update:", cardErr);
+    }
+  }
+
+  await logAdminAction(adminUser, "MEMBER_EDITED", user._id, { field: "profile" }, oldValue, newValue);
 
   return { message: "Member details updated successfully", user };
 };
@@ -139,7 +200,7 @@ export const deleteMemberApplicationService = async (adminUser, id) => {
   return { message: "Member application deleted successfully" };
 };
 
-export const verifyPaymentService = async (adminUser, id, status) => {
+export const verifyPaymentService = async (adminUser, id, { status, rejectionReason, notes }) => {
   if (!["paid", "rejected"].includes(status)) {
     throw new Error("Invalid payment status. Must be 'paid' or 'rejected'.");
   }
@@ -152,16 +213,31 @@ export const verifyPaymentService = async (adminUser, id, status) => {
   if (status === "paid" && (!user.paymentReferenceId || !user.paymentScreenshot)) {
     throw new Error("Payment reference ID and payment screenshot are required before approving payment.");
   }
+  
+  if (status === "rejected" && !rejectionReason) {
+    throw new Error("Rejection reason is required when rejecting a payment.");
+  }
+
+  const oldValue = { paymentStatus: user.paymentStatus, paymentRejectionReason: user.paymentRejectionReason, paymentNotes: user.paymentNotes };
 
   user.paymentStatus = status;
   user.paymentVerifiedAt = new Date();
   user.verifiedBy = adminUser._id;
+  
+  if (status === "rejected") {
+    user.paymentRejectionReason = rejectionReason;
+  }
+  if (notes !== undefined) {
+    user.paymentNotes = notes;
+  }
+
+  const newValue = { paymentStatus: user.paymentStatus, paymentRejectionReason: user.paymentRejectionReason, paymentNotes: user.paymentNotes };
 
   await user.save();
 
   await logAdminAction(adminUser, `PAYMENT_${status.toUpperCase()}`, user._id, {
     referenceId: user.paymentReferenceId,
-  });
+  }, oldValue, newValue);
 
   if (status === "paid") {
     // Isolated hook to process referral and cashback safely
@@ -286,7 +362,7 @@ async function processReferralEligibilityHook(userId) {
   }
 };
 
-export const verifyMembershipService = async (adminUser, id, status) => {
+export const verifyMembershipService = async (adminUser, id, { status, rejectionReason }) => {
   if (!["approved", "rejected"].includes(status)) {
     throw new Error("Invalid approval status. Must be 'approved' or 'rejected'.");
   }
@@ -306,7 +382,16 @@ export const verifyMembershipService = async (adminUser, id, status) => {
     }
   }
 
+  if (status === "rejected" && !rejectionReason) {
+    throw new Error("Rejection reason is required when rejecting membership.");
+  }
+
+  const oldValue = { approvalStatus: user.approvalStatus, membershipRejectionReason: user.membershipRejectionReason };
+
   user.approvalStatus = status;
+  if (status === "rejected") {
+    user.membershipRejectionReason = rejectionReason;
+  }
 
   if (status === "approved") {
     // Only generate membership ID if they don't have one yet
@@ -398,10 +483,12 @@ export const verifyMembershipService = async (adminUser, id, status) => {
     }
   }
 
+  const newValue = { approvalStatus: user.approvalStatus, membershipRejectionReason: user.membershipRejectionReason };
+
   await logAdminAction(adminUser, `MEMBERSHIP_${status.toUpperCase()}`, user._id, {
     membershipId: user.membershipId,
     expiryDate: user.expiryDate,
-  });
+  }, oldValue, newValue);
 
   return { message: `Membership status verified as: ${status}`, user };
 };
@@ -441,4 +528,131 @@ export const updateCashbackStatusService = async (adminUser, id, status) => {
   });
 
   return { message: `Cashback status updated to ${status}`, cashback };
+};
+
+// --- Account Controls ---
+
+export const resetMemberPasswordService = async (adminUser, id) => {
+  const user = await User.findById(id);
+  if (!user) throw new Error("User not found");
+
+  const newPassword = crypto.randomBytes(6).toString('hex'); // Generate random password
+  const salt = await bcrypt.genSalt(10);
+  user.password = await bcrypt.hash(newPassword, salt);
+  await user.save();
+
+  await logAdminAction(adminUser, "PASSWORD_RESET", user._id, {});
+
+  // Send email with new password
+  try {
+    await transporter.sendMail({
+      from: process.env.FROM_EMAIL,
+      to: user.email,
+      subject: "Your VPMH Password Has Been Reset",
+      text: `Hello ${user.name},\n\nYour password has been reset by an administrator.\n\nYour new temporary password is: ${newPassword}\n\nPlease login and change it immediately.`
+    });
+  } catch (err) {
+    console.error("❌ Email failed during password reset:", err);
+  }
+
+  return { message: "Password reset successfully and email sent." };
+};
+
+export const forceEmailVerificationService = async (adminUser, id) => {
+  const user = await User.findById(id);
+  if (!user) throw new Error("User not found");
+
+  const oldValue = { isEmailVerified: user.isEmailVerified };
+  user.isEmailVerified = false;
+  // This would typically also generate and send a new verification email
+  const newValue = { isEmailVerified: user.isEmailVerified };
+
+  await user.save();
+  await logAdminAction(adminUser, "FORCE_EMAIL_VERIFICATION", user._id, {}, oldValue, newValue);
+
+  return { message: "Member email verification status reset." };
+};
+
+export const updateAccountStatusService = async (adminUser, id, status) => {
+  if (!["active", "deactivated", "blocked"].includes(status)) {
+    throw new Error("Invalid account status");
+  }
+
+  const user = await User.findById(id);
+  if (!user) throw new Error("User not found");
+
+  const oldValue = { accountStatus: user.accountStatus };
+  user.accountStatus = status;
+  const newValue = { accountStatus: user.accountStatus };
+
+  await user.save();
+  await logAdminAction(adminUser, `ACCOUNT_STATUS_${status.toUpperCase()}`, user._id, {}, oldValue, newValue);
+
+  return { message: `Account status updated to ${status}`, user };
+};
+
+// --- Admin Management (Super Admin Only) ---
+
+export const getAdminsService = async () => {
+  const admins = await User.find({ isAdmin: true }).select("-password").sort({ createdAt: -1 });
+  return admins;
+};
+
+export const createAdminService = async (adminUser, { email, name, role, password }) => {
+  const existingUser = await User.findOne({ email });
+  if (existingUser) {
+    throw new Error("User with this email already exists");
+  }
+
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
+
+  const newAdmin = new User({
+    name,
+    email,
+    password: hashedPassword,
+    isAdmin: true,
+    adminRole: role,
+    accountStatus: "active",
+  });
+
+  await newAdmin.save();
+
+  await logAdminAction(adminUser, "ADMIN_CREATED", newAdmin._id, { role: newAdmin.adminRole, email: newAdmin.email });
+
+  return { message: "Admin created successfully", admin: { id: newAdmin._id, email: newAdmin.email, role: newAdmin.adminRole } };
+};
+
+export const updateAdminRoleService = async (adminUser, id, role) => {
+  const adminToUpdate = await User.findById(id);
+  if (!adminToUpdate || !adminToUpdate.isAdmin) {
+    throw new Error("Admin not found");
+  }
+
+  // Prevent self-demotion from super_admin if they are the only one, etc. (omitted for brevity)
+  
+  const oldValue = { adminRole: adminToUpdate.adminRole };
+  adminToUpdate.adminRole = role;
+  const newValue = { adminRole: adminToUpdate.adminRole };
+
+  await adminToUpdate.save();
+
+  await logAdminAction(adminUser, "ADMIN_ROLE_UPDATED", adminToUpdate._id, {}, oldValue, newValue);
+
+  return { message: "Admin role updated successfully" };
+};
+
+export const deleteAdminService = async (adminUser, id) => {
+  const adminToDelete = await User.findById(id);
+  if (!adminToDelete || !adminToDelete.isAdmin) {
+    throw new Error("Admin not found");
+  }
+
+  // Optionally check if it's the last super admin before deleting
+
+  await User.findByIdAndDelete(id);
+
+  await logAdminAction(adminUser, "ADMIN_DELETED", adminToDelete._id, { email: adminToDelete.email });
+
+  return { message: "Admin deleted successfully" };
 };

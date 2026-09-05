@@ -22,6 +22,18 @@ const auditLogSchema = new mongoose.Schema(
     details: {
       type: mongoose.Schema.Types.Mixed,
     },
+    oldValue: {
+      type: mongoose.Schema.Types.Mixed,
+    },
+    newValue: {
+      type: mongoose.Schema.Types.Mixed,
+    },
+    ipAddress: {
+      type: String,
+    },
+    deviceDetails: {
+      type: String,
+    },
   },
   { timestamps: true }
 );

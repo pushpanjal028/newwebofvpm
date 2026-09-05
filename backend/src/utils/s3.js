@@ -1,15 +1,19 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-const s3Client = new S3Client({
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
-  },
-  region: "us-east-1",
-});
-
-const BUCKET_NAME = process.env.AWS_BUCKET_NAME || "";
+let s3Client;
+const getS3Client = () => {
+  if (!s3Client) {
+    s3Client = new S3Client({
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
+      },
+      region: process.env.AWS_REGION || "us-east-1",
+    });
+  }
+  return s3Client;
+};
 
 /**
  * Generates a presigned PUT URL for client-side uploads directly to S3.
@@ -25,7 +29,7 @@ export const generatePresignedPutUrl = async (key, contentType) => {
   });
 
   // URL valid for 15 minutes (900 seconds)
-  return await getSignedUrl(s3Client, command, { expiresIn: 900 });
+  return await getSignedUrl(getS3Client(), command, { expiresIn: 900 });
 };
 
 /**
@@ -40,7 +44,7 @@ export const generatePresignedGetUrl = async (key, expiresInSeconds = 900) => {
     Key: key,
   });
 
-  return await getSignedUrl(s3Client, command, { expiresIn: expiresInSeconds });
+  return await getSignedUrl(getS3Client(), command, { expiresIn: expiresInSeconds });
 };
 
 /**
@@ -52,7 +56,7 @@ export const deleteS3Object = async (key) => {
     Bucket: process.env.AWS_BUCKET_NAME || "",
     Key: key,
   });
-  await s3Client.send(command);
+  await getS3Client().send(command);
 };
 
 /**
@@ -68,5 +72,5 @@ export const uploadBufferToS3 = async (key, buffer, contentType) => {
     Body: buffer,
     ContentType: contentType,
   });
-  await s3Client.send(command);
+  await getS3Client().send(command);
 };

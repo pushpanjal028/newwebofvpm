@@ -12,7 +12,9 @@ import {
   getUploadUrl, clearAuth,
   getPublicGalleryPhotos, createGalleryPhoto, deleteGalleryPhoto,
   getPresignedUploadUrl, uploadFileToS3,
-  getAdminCashbacks, updateCashbackStatus, fetchSecureDocumentUrl
+  getAdminCashbacks, updateCashbackStatus, fetchSecureDocumentUrl,
+  resetMemberPassword, forceEmailVerification, updateAccountStatus,
+  getAdmins, createAdmin, updateAdminRole, deleteAdmin
 } from "../../api";
 
 import ProtectedImage from "../../components/common/ProtectedImage";
@@ -22,6 +24,8 @@ export default function AdminDashboard() {
 
 
   // Authentication check
+  const [currentAdmin, setCurrentAdmin] = useState<any>(null);
+
   useEffect(() => {
     const token = localStorage.getItem("vpm_token");
     const user = localStorage.getItem("vpm_user");
@@ -34,13 +38,14 @@ export default function AdminDashboard() {
       if (!parsed.isAdmin) {
         navigate("/admin-login");
       }
+      setCurrentAdmin(parsed);
     } catch {
       navigate("/admin-login");
     }
   }, [navigate]);
 
-  // Tabs: "members", "logs", "gallery" or "cashbacks"
-  const [activeTab, setActiveTab] = useState<"members" | "logs" | "gallery" | "cashbacks">("members");
+  // Tabs: "members", "logs", "gallery", "cashbacks", or "admins"
+  const [activeTab, setActiveTab] = useState<"members" | "logs" | "gallery" | "cashbacks" | "admins">("members");
 
   // Stats
   const [stats, setStats] = useState({
@@ -78,6 +83,76 @@ export default function AdminDashboard() {
   const [galleryCategory, setGalleryCategory] = useState("Events");
   const [galleryFile, setGalleryFile] = useState<File | null>(null);
   const [galleryUploadLoading, setGalleryUploadLoading] = useState(false);
+
+  // Admin Management State
+  const [admins, setAdmins] = useState<any[]>([]);
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [newAdminEmail, setNewAdminEmail] = useState("");
+  const [newAdminName, setNewAdminName] = useState("");
+  const [newAdminPassword, setNewAdminPassword] = useState("");
+  const [newAdminRole, setNewAdminRole] = useState("admin");
+
+  const fetchAdmins = async () => {
+    setAdminLoading(true);
+    try {
+      const data = await getAdmins();
+      setAdmins(data);
+    } catch (err: any) {
+      console.error("Error fetching admins:", err);
+    } finally {
+      setAdminLoading(false);
+    }
+  };
+
+  const handleCreateAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setActionLoading(true);
+    setError("");
+    setSuccess("");
+    try {
+      await createAdmin({ email: newAdminEmail, name: newAdminName, password: newAdminPassword, role: newAdminRole });
+      setSuccess("Administrator created successfully.");
+      setNewAdminEmail("");
+      setNewAdminName("");
+      setNewAdminPassword("");
+      fetchAdmins();
+    } catch (err: any) {
+      setError(err.message || "Failed to create admin.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleUpdateAdminRole = async (id: string, role: string) => {
+    setActionLoading(true);
+    setError("");
+    setSuccess("");
+    try {
+      await updateAdminRole(id, role);
+      setSuccess("Admin role updated.");
+      fetchAdmins();
+    } catch (err: any) {
+      setError(err.message || "Failed to update admin role.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteAdmin = async (id: string) => {
+    if (!window.confirm("Are you sure you want to remove this administrator?")) return;
+    setActionLoading(true);
+    setError("");
+    setSuccess("");
+    try {
+      await deleteAdmin(id);
+      setSuccess("Administrator removed.");
+      fetchAdmins();
+    } catch (err: any) {
+      setError(err.message || "Failed to remove admin.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const fetchGalleryPhotos = async () => {
     setGalleryLoading(true);
@@ -165,6 +240,12 @@ export default function AdminDashboard() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState("");
 
+  // Rejection Modals/Inputs State
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [paymentNotes, setPaymentNotes] = useState("");
+  const [showRejectPaymentModal, setShowRejectPaymentModal] = useState(false);
+  const [showRejectMembershipModal, setShowRejectMembershipModal] = useState(false);
+
   const handleViewSecureDocument = async (fileKey: string) => {
     setPreviewLoading(true);
     setPreviewError("");
@@ -189,7 +270,45 @@ export default function AdminDashboard() {
     state: "",
     city: "",
     designation: "",
+    photo: "",
+    documentProof: "",
   });
+  const [editPhotoLoading, setEditPhotoLoading] = useState(false);
+  const [editDocLoading, setEditDocLoading] = useState(false);
+
+  const handleEditPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setEditPhotoLoading(true);
+      try {
+        const presigned = await getPresignedUploadUrl(file.name, file.type);
+        await uploadFileToS3(presigned.uploadUrl, file);
+        setEditFormData({ ...editFormData, photo: presigned.key });
+        setSuccess("Photo uploaded and staged for save.");
+      } catch (err: any) {
+        setError(err.message || "Failed to upload photo");
+      } finally {
+        setEditPhotoLoading(false);
+      }
+    }
+  };
+
+  const handleEditDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setEditDocLoading(true);
+      try {
+        const presigned = await getPresignedUploadUrl(file.name, file.type);
+        await uploadFileToS3(presigned.uploadUrl, file);
+        setEditFormData({ ...editFormData, documentProof: presigned.key });
+        setSuccess("Document uploaded and staged for save.");
+      } catch (err: any) {
+        setError(err.message || "Failed to upload document");
+      } finally {
+        setEditDocLoading(false);
+      }
+    }
+  };
 
   // Fetch Stats
   const fetchStats = async () => {
@@ -249,6 +368,8 @@ export default function AdminDashboard() {
       fetchGalleryPhotos();
     } else if (activeTab === "cashbacks") {
       fetchCashbacks();
+    } else if (activeTab === "admins") {
+      fetchAdmins();
     }
   }, [activeTab, page, logPage, paymentFilter, approvalFilter]);
 
@@ -268,16 +389,23 @@ export default function AdminDashboard() {
 
   // Verify Payment Status Action
   const handleVerifyPayment = async (id: string, status: "paid" | "rejected") => {
+    if (status === "rejected" && !rejectionReason.trim()) {
+      setError("Please provide a rejection reason.");
+      return;
+    }
     setActionLoading(true);
     setError("");
     setSuccess("");
     try {
-      await verifyPayment(id, status);
+      await verifyPayment(id, status, status === "rejected" ? rejectionReason : undefined, paymentNotes);
       setSuccess(`Payment marked as ${status.toUpperCase()} successfully.`);
       fetchStats();
       fetchMembers();
+      setShowRejectPaymentModal(false);
+      setRejectionReason("");
+      setPaymentNotes("");
       if (inspectingMember && inspectingMember._id === id) {
-        setInspectingMember(null);
+        setInspectingMember({ ...inspectingMember, paymentStatus: status, paymentRejectionReason: status === "rejected" ? rejectionReason : undefined, paymentNotes });
       }
     } catch (err: any) {
       setError(err.message || "Operation failed.");
@@ -288,16 +416,22 @@ export default function AdminDashboard() {
 
   // Verify Membership Approval Action
   const handleVerifyMembership = async (id: string, status: "approved" | "rejected") => {
+    if (status === "rejected" && !rejectionReason.trim()) {
+      setError("Please provide a rejection reason.");
+      return;
+    }
     setActionLoading(true);
     setError("");
     setSuccess("");
     try {
-      await verifyMembership(id, status);
+      await verifyMembership(id, status, status === "rejected" ? rejectionReason : undefined);
       setSuccess(`Membership marked as ${status.toUpperCase()} successfully.`);
       fetchStats();
       fetchMembers();
+      setShowRejectMembershipModal(false);
+      setRejectionReason("");
       if (inspectingMember && inspectingMember._id === id) {
-        setInspectingMember(null);
+        setInspectingMember({ ...inspectingMember, approvalStatus: status, membershipRejectionReason: status === "rejected" ? rejectionReason : undefined });
       }
     } catch (err: any) {
       setError(err.message || "Operation failed.");
@@ -335,6 +469,8 @@ export default function AdminDashboard() {
       state: member.state || "",
       city: member.city || "",
       designation: member.designation || "",
+      photo: member.photo || "",
+      documentProof: member.documentProof || "",
     });
   };
 
@@ -367,6 +503,60 @@ export default function AdminDashboard() {
       fetchMembers();
     } catch (err: any) {
       setError(err.message || "Failed to delete application.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Account Control Actions
+  const handleResetPassword = async (id: string) => {
+    if (!window.confirm("Are you sure you want to reset this member's password? An email will be sent.")) return;
+    setActionLoading(true);
+    setError("");
+    setSuccess("");
+    try {
+      await resetMemberPassword(id);
+      setSuccess("Password reset successfully. Email sent to member.");
+    } catch (err: any) {
+      setError(err.message || "Failed to reset password.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleForceEmailVerification = async (id: string) => {
+    if (!window.confirm("Are you sure you want to force email verification?")) return;
+    setActionLoading(true);
+    setError("");
+    setSuccess("");
+    try {
+      await forceEmailVerification(id);
+      setSuccess("Email verification reset successfully.");
+      if (inspectingMember && inspectingMember._id === id) {
+        setInspectingMember({ ...inspectingMember, isEmailVerified: false });
+      }
+      fetchMembers();
+    } catch (err: any) {
+      setError(err.message || "Failed to reset email verification.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleUpdateAccountStatus = async (id: string, status: string) => {
+    if (!window.confirm(`Are you sure you want to mark this account as ${status}?`)) return;
+    setActionLoading(true);
+    setError("");
+    setSuccess("");
+    try {
+      await updateAccountStatus(id, status);
+      setSuccess(`Account status updated to ${status}.`);
+      if (inspectingMember && inspectingMember._id === id) {
+        setInspectingMember({ ...inspectingMember, accountStatus: status });
+      }
+      fetchMembers();
+    } catch (err: any) {
+      setError(err.message || "Failed to update account status.");
     } finally {
       setActionLoading(false);
     }
@@ -451,6 +641,16 @@ export default function AdminDashboard() {
           >
             Referral Cashbacks
           </button>
+          {currentAdmin?.isAdmin && (
+            <button
+              onClick={() => setActiveTab("admins")}
+              className={`px-6 py-2.5 text-xs font-black tracking-wider uppercase border-b-2 transition-all ${
+                activeTab === "admins" ? "border-amber-500 text-slate-900 font-extrabold" : "border-transparent text-slate-500 hover:text-slate-900"
+              }`}
+            >
+              Admin Management
+            </button>
+          )}
         </div>
 
         {/* Dynamic Alerts */}
@@ -900,6 +1100,62 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {activeTab === "admins" && (
+          <div className="space-y-6">
+            <form onSubmit={handleCreateAdmin} className="bg-white border rounded-3xl p-6 md:p-8 space-y-4 shadow-sm">
+              <h3 className="text-lg font-black text-slate-900 border-b pb-3 flex items-center gap-2">
+                <ShieldAlert className="h-5 w-5 text-amber-500" /> Create New Administrator
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <input required type="text" placeholder="Admin Name" value={newAdminName} onChange={e => setNewAdminName(e.target.value)} className="bg-slate-50 border rounded-xl py-2 px-3 text-xs" />
+                <input required type="email" placeholder="Email Address" value={newAdminEmail} onChange={e => setNewAdminEmail(e.target.value)} className="bg-slate-50 border rounded-xl py-2 px-3 text-xs" />
+                <input required type="password" placeholder="Temporary Password" value={newAdminPassword} onChange={e => setNewAdminPassword(e.target.value)} className="bg-slate-50 border rounded-xl py-2 px-3 text-xs" />
+                <select value={newAdminRole} onChange={e => setNewAdminRole(e.target.value)} className="bg-slate-50 border rounded-xl py-2 px-3 text-xs font-bold">
+                  <option value="admin">Admin</option>
+                  <option value="verification_admin">Verification Admin</option>
+                  <option value="content_admin">Content Admin</option>
+                  <option value="support_admin">Support Admin</option>
+                  <option value="read_only_admin">Read-Only Admin</option>
+                </select>
+              </div>
+              <button disabled={actionLoading} type="submit" className="bg-slate-900 text-white text-xs font-bold px-6 py-2 rounded-xl">Create Admin</button>
+            </form>
+
+            <div className="bg-white border rounded-3xl p-6 shadow-sm overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b text-[10px] text-slate-500 uppercase tracking-widest">
+                    <th className="py-3">Name / Email</th>
+                    <th className="py-3">Role</th>
+                    <th className="py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {admins.map(admin => (
+                    <tr key={admin._id} className="border-b last:border-0 text-xs">
+                      <td className="py-3"><div className="font-bold">{admin.name}</div><div className="text-[10px] text-slate-500">{admin.email}</div></td>
+                      <td className="py-3">
+                        <select value={admin.adminRole} onChange={(e) => handleUpdateAdminRole(admin._id, e.target.value)} className="bg-slate-50 border rounded py-1 px-2 text-xs font-bold">
+                          <option value="admin">Admin</option>
+                          <option value="verification_admin">Verification Admin</option>
+                          <option value="content_admin">Content Admin</option>
+                          <option value="support_admin">Support Admin</option>
+                          <option value="read_only_admin">Read-Only Admin</option>
+                        </select>
+                      </td>
+                      <td className="py-3 text-right">
+                        {admin.email !== currentAdmin.email && (
+                          <button onClick={() => handleDeleteAdmin(admin._id)} className="text-red-600 hover:bg-red-50 p-1.5 rounded text-xs font-bold">Delete</button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* TAB 3: PHOTO GALLERY MANAGEMENT */}
         {activeTab === "gallery" && (
           <div className="space-y-8">
@@ -1172,7 +1428,7 @@ export default function AdminDashboard() {
                         </button>
                         <button
                           disabled={actionLoading}
-                          onClick={() => handleVerifyPayment(inspectingMember._id, "rejected")}
+                          onClick={() => setShowRejectPaymentModal(true)}
                           className="flex items-center gap-1 bg-red-50 hover:bg-red-100 text-red-650 font-bold text-[10px] px-3 py-1.5 rounded-xl transition-all border border-red-200"
                         >
                           <X className="h-3.5 w-3.5" /> Reject Fee
@@ -1203,7 +1459,7 @@ export default function AdminDashboard() {
                         </button>
                         <button
                           disabled={actionLoading}
-                          onClick={() => handleVerifyMembership(inspectingMember._id, "rejected")}
+                          onClick={() => setShowRejectMembershipModal(true)}
                           className="flex items-center gap-1 bg-red-55/10 hover:bg-red-100 text-red-600 font-bold text-[10px] px-3 py-1.5 rounded-xl transition-all border border-red-200"
                         >
                           <X className="h-3.5 w-3.5" /> Reject Application
@@ -1215,6 +1471,146 @@ export default function AdminDashboard() {
                       </span>
                     )}
                   </div>
+                  {/* Step 3: Account Controls (Super Admin Only) */}
+                  {currentAdmin?.isAdmin && (
+                    <div className="bg-red-50/50 border border-red-100 p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                      <div>
+                        <h5 className="text-xs font-black uppercase text-red-700 tracking-wide">Step 3: Account Controls</h5>
+                        <p className="text-[10px] text-red-600/80">Danger zone: Reset password, force verify email, block account.</p>
+                      </div>
+                      <div className="flex gap-1.5 self-end flex-wrap justify-end">
+                        <button
+                          disabled={actionLoading}
+                          onClick={() => handleResetPassword(inspectingMember._id)}
+                          className="flex items-center gap-1 bg-white hover:bg-red-50 text-red-650 font-bold text-[10px] px-3 py-1.5 rounded-xl transition-all border border-red-200"
+                        >
+                          Reset Password
+                        </button>
+                        <button
+                          disabled={actionLoading}
+                          onClick={() => handleForceEmailVerification(inspectingMember._id)}
+                          className="flex items-center gap-1 bg-white hover:bg-red-50 text-red-650 font-bold text-[10px] px-3 py-1.5 rounded-xl transition-all border border-red-200"
+                        >
+                          Force Unverify Email
+                        </button>
+                        {inspectingMember.accountStatus === "active" ? (
+                          <button
+                            disabled={actionLoading}
+                            onClick={() => handleUpdateAccountStatus(inspectingMember._id, "blocked")}
+                            className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white font-bold text-[10px] px-3 py-1.5 rounded-xl transition-all shadow-sm"
+                          >
+                            Block Member
+                          </button>
+                        ) : (
+                          <button
+                            disabled={actionLoading}
+                            onClick={() => handleUpdateAccountStatus(inspectingMember._id, "active")}
+                            className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white font-bold text-[10px] px-3 py-1.5 rounded-xl transition-all shadow-sm"
+                          >
+                            Unblock Member
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* MODAL: REJECT PAYMENT */}
+        {showRejectPaymentModal && inspectingMember && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white rounded-3xl w-full max-w-md border overflow-hidden shadow-2xl relative"
+            >
+              <div className="p-6 border-b flex justify-between items-center">
+                <h3 className="text-lg font-black text-red-600">Reject Payment</h3>
+                <button
+                  onClick={() => setShowRejectPaymentModal(false)}
+                  className="p-1 hover:bg-slate-100 rounded-full transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Rejection Reason *</label>
+                  <textarea
+                    required
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    className="w-full bg-slate-50 border rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-800"
+                    placeholder="Provide a reason for rejection..."
+                    rows={3}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Internal Notes (Optional)</label>
+                  <textarea
+                    value={paymentNotes}
+                    onChange={(e) => setPaymentNotes(e.target.value)}
+                    className="w-full bg-slate-50 border rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-800"
+                    placeholder="Internal notes..."
+                    rows={2}
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <button onClick={() => setShowRejectPaymentModal(false)} className="px-4 py-2 border rounded-xl hover:bg-slate-50 text-xs font-bold transition-all">Cancel</button>
+                  <button
+                    onClick={() => handleVerifyPayment(inspectingMember._id, "rejected")}
+                    disabled={actionLoading}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all shadow-md"
+                  >
+                    Confirm Rejection
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* MODAL: REJECT MEMBERSHIP */}
+        {showRejectMembershipModal && inspectingMember && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white rounded-3xl w-full max-w-md border overflow-hidden shadow-2xl relative"
+            >
+              <div className="p-6 border-b flex justify-between items-center">
+                <h3 className="text-lg font-black text-red-600">Reject Application</h3>
+                <button
+                  onClick={() => setShowRejectMembershipModal(false)}
+                  className="p-1 hover:bg-slate-100 rounded-full transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Rejection Reason *</label>
+                  <textarea
+                    required
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    className="w-full bg-slate-50 border rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-800"
+                    placeholder="Provide a reason for rejecting membership..."
+                    rows={3}
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <button onClick={() => setShowRejectMembershipModal(false)} className="px-4 py-2 border rounded-xl hover:bg-slate-50 text-xs font-bold transition-all">Cancel</button>
+                  <button
+                    onClick={() => handleVerifyMembership(inspectingMember._id, "rejected")}
+                    disabled={actionLoading}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all shadow-md"
+                  >
+                    Confirm Rejection
+                  </button>
                 </div>
               </div>
             </motion.div>
@@ -1305,6 +1701,46 @@ export default function AdminDashboard() {
                       onChange={(e) => setEditFormData({ ...editFormData, city: e.target.value })}
                       className="w-full bg-slate-50 border rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-800"
                     />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Update Profile Photo</label>
+                    <div className="flex flex-col gap-2">
+                      {editFormData.photo && (
+                        <div className="flex items-center gap-2 p-2 bg-slate-50 border rounded-lg">
+                          <span className="text-[10px] truncate max-w-[120px] text-slate-600">Existing/Staged Photo</span>
+                          <button type="button" onClick={() => handleViewSecureDocument(editFormData.photo)} className="ml-auto text-blue-500 hover:text-blue-700">
+                            <Eye className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
+                      <label className={`flex items-center justify-center gap-2 px-3 py-2 border border-dashed rounded-xl text-xs cursor-pointer transition-colors ${editPhotoLoading ? 'bg-slate-100 border-slate-300' : 'bg-slate-50 hover:bg-slate-100 border-slate-300'}`}>
+                        {editPhotoLoading ? <Loader2 className="h-3 w-3 animate-spin text-slate-500" /> : <Upload className="h-3 w-3 text-slate-500" />}
+                        <span className="text-slate-600 font-medium">{editPhotoLoading ? "Uploading..." : "Upload New Photo"}</span>
+                        <input type="file" className="hidden" accept="image/*" onChange={handleEditPhotoUpload} disabled={editPhotoLoading} />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Update Document (Front)</label>
+                    <div className="flex flex-col gap-2">
+                      {editFormData.documentProof && (
+                        <div className="flex items-center gap-2 p-2 bg-slate-50 border rounded-lg">
+                          <span className="text-[10px] truncate max-w-[120px] text-slate-600">Existing/Staged Doc</span>
+                          <button type="button" onClick={() => handleViewSecureDocument(editFormData.documentProof)} className="ml-auto text-blue-500 hover:text-blue-700">
+                            <Eye className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
+                      <label className={`flex items-center justify-center gap-2 px-3 py-2 border border-dashed rounded-xl text-xs cursor-pointer transition-colors ${editDocLoading ? 'bg-slate-100 border-slate-300' : 'bg-slate-50 hover:bg-slate-100 border-slate-300'}`}>
+                        {editDocLoading ? <Loader2 className="h-3 w-3 animate-spin text-slate-500" /> : <Upload className="h-3 w-3 text-slate-500" />}
+                        <span className="text-slate-600 font-medium">{editDocLoading ? "Uploading..." : "Upload New Doc"}</span>
+                        <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleEditDocUpload} disabled={editDocLoading} />
+                      </label>
+                    </div>
                   </div>
                 </div>
 

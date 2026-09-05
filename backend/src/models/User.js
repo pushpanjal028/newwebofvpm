@@ -27,6 +27,8 @@ const userSchema = new mongoose.Schema(
     paymentReferenceId: { type: String, unique: true, sparse: true },
     paymentScreenshot: { type: String },
     paymentVerifiedAt: { type: Date },
+    paymentRejectionReason: { type: String },
+    paymentNotes: { type: String },
     verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 
     // Verification and ID Card
@@ -38,9 +40,19 @@ const userSchema = new mongoose.Schema(
     membershipId: { type: String, unique: true, sparse: true },
     issueDate: { type: Date },
     expiryDate: { type: Date },
+    membershipRejectionReason: { type: String },
 
-    // Role
+    // Role & Account Status
     isAdmin: { type: Boolean, default: false },
+    adminRole: { 
+      type: String, 
+      enum: ["admin", "super_admin", "verification_admin", "content_admin", "support_admin", "read_only_admin"] 
+    },
+    accountStatus: { 
+      type: String, 
+      enum: ["active", "deactivated", "blocked"], 
+      default: "active" 
+    },
 
     // Referral System
     coordinatorCode: { type: String, unique: true, sparse: true },

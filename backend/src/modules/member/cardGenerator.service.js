@@ -19,27 +19,41 @@ const getBase64Image = (filePath) => {
   return '';
 };
 
+import { generatePresignedGetUrl } from '../../utils/s3.js';
+
 export const generateCardPDF = async (memberData) => {
   // Load Logo
   const logoPath = path.join(__dirname, '../../../../frontend/src/assets/logo perfect.png');
   const logoBase64 = getBase64Image(logoPath);
-  
+
   // Load Photo
   let photoBase64 = '';
   if (memberData.localPhotoPath && !memberData.localPhotoPath.startsWith('http')) {
-    // Fix leading slashes or /uploads/ paths which break path.join
-    const cleanPath = memberData.localPhotoPath.replace(/^[\/\\]?uploads[\/\\]/, '').replace(/^[\/\\]/, '');
-    const photoPath = path.join(__dirname, '../../../../backend/uploads', cleanPath);
-    console.log("Looking for photo at:", photoPath);
-    photoBase64 = getBase64Image(photoPath);
+    if (process.env.AWS_BUCKET_NAME) {
+      try {
+        const url = await generatePresignedGetUrl(memberData.localPhotoPath);
+        const response = await fetch(url);
+        const arrayBuffer = await response.arrayBuffer();
+        const ext = path.extname(memberData.localPhotoPath).replace('.', '') || 'png';
+        photoBase64 = `data:image/${ext};base64,${Buffer.from(arrayBuffer).toString('base64')}`;
+      } catch (e) {
+        console.error("Error fetching photo from S3 URL:", e);
+      }
+    } else {
+      // Fix leading slashes or /uploads/ paths which break path.join
+      const cleanPath = memberData.localPhotoPath.replace(/^[\/\\]?uploads[\/\\]/, '').replace(/^[\/\\]/, '');
+      const photoPath = path.join(__dirname, '../../../../backend/uploads', cleanPath);
+      console.log("Looking for photo at:", photoPath);
+      photoBase64 = getBase64Image(photoPath);
+    }
   } else if (memberData.photoUrl && memberData.photoUrl.startsWith('data:')) {
-    photoBase64 = memberData.photoUrl; 
+    photoBase64 = memberData.photoUrl;
   }
-  
+
   // Load Signature Image
   const sigPath = path.join(__dirname, '../../../../frontend/src/assets/signatures.png');
   const sigBase64 = getBase64Image(sigPath);
-  
+
   const htmlContent = `
   <!DOCTYPE html>
   <html lang="en">
@@ -103,7 +117,7 @@ export const generateCardPDF = async (memberData) => {
         /* Top Right R.No. */
         .r-no {
           position: absolute;
-          top: 15px;
+          top: 10px;
           right: 15px;
           color: #d12222;
           font-size: 10px;
@@ -113,8 +127,8 @@ export const generateCardPDF = async (memberData) => {
         /* Header Content */
         .header-content {
           text-align: center;
-          padding-top: 15px;
-          padding-left: 100px; /* Shift entire block right to clear corner and center visually */
+          padding-top: 30px; /* Increased to push header down below R.No */
+          padding-left: 100px; /* Shift entire block right to clear corner */
           padding-right: 20px;
           position: relative;
           z-index: 10;
@@ -422,10 +436,10 @@ export const generateCardPDF = async (memberData) => {
           ${logoBase64 ? `<img src="${logoBase64}" class="watermark" />` : ''}
           
           <div class="photo-box">
-            ${photoBase64 
-              ? `<img src="${photoBase64}" alt="Photo" />` 
-              : `<div class="photo-unavailable">Photo<br/>unavailable</div>`
-            }
+            ${photoBase64
+      ? `<img src="${photoBase64}" alt="Photo" />`
+      : `<div class="photo-unavailable">Photo<br/>unavailable</div>`
+    }
           </div>
           
           <div class="info-list">
@@ -447,7 +461,7 @@ export const generateCardPDF = async (memberData) => {
             <div class="info-row">
               <div class="info-label">कार्यक्षेत्र</div>
               <div class="info-colon">:</div>
-              <div class="info-value">${memberData.organization || ''}</div>
+              <div class="info-value">${memberData.city || ''}${memberData.state ? ', ' + memberData.state : ''}</div>
             </div>
             <div class="info-row">
               <div class="info-label">पता</div>
@@ -515,17 +529,17 @@ export const generateCardPDF = async (memberData) => {
       headless: "new",
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
-    
+
     const page = await browser.newPage();
     await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-    
+
     const pdfBuffer = await page.pdf({
       width: '550px',
       height: '850px',
       printBackground: true,
       margin: { top: '0px', bottom: '0px', left: '0px', right: '0px' }
     });
-    
+
     return pdfBuffer;
   } catch (error) {
     console.error("Error generating PDF with Puppeteer:", error);

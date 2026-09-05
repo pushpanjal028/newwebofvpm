@@ -183,6 +183,12 @@ export default function Registration() {
   // Submit full registration details
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.fullName || !formData.email || !formData.phone || !formData.state || !formData.city || !formData.password) {
+      setError("Please fill out all required fields (Name, Email, Phone, State, City, Password) completely before submitting.");
+      return;
+    }
+
     if (!photoKey && !documentProofKey && !documentProofBackKey) {
       setError("Please upload your profile photo and Aadhar front/back sides.");
       return;
