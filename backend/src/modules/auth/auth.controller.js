@@ -30,7 +30,7 @@ export const sendOtp = async (req, res) => {
 
 export const registerUser = async (req, res) => {
   try {
-    const { name, email, password, phone, organization, state, city, designation, otp, photo, documentProof } = req.body;
+    const { name, email, password, phone, organization, state, city, designation, otp, photo, documentProof, documentProofBack } = req.body;
     const result = await registerUserService({
       name,
       email,
@@ -43,6 +43,7 @@ export const registerUser = async (req, res) => {
       otp,
       photo,
       documentProof,
+      documentProofBack,
     });
     res.json(result);
   } catch (err) {
@@ -85,7 +86,7 @@ export const getCurrentProfile = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    const { name, phone, organization, state, city, designation, photo, documentProof } = req.body;
+    const { name, phone, organization, state, city, designation, photo, documentProof, documentProofBack } = req.body;
     const result = await updateProfileService(req.user._id, {
       name,
       phone,
@@ -95,6 +96,7 @@ export const updateProfile = async (req, res) => {
       designation,
       photo,
       documentProof,
+      documentProofBack,
     });
     res.json(result);
   } catch (err) {
@@ -148,7 +150,7 @@ export const resetPasswordWithOtp = async (req, res) => {
 
 export const registerPhase3 = async (req, res) => {
   try {
-    const { name, email, password, phone, organization, state, city, designation, photo, documentProof, coordinatorCode, attemptId } = req.body;
+    const { name, email, password, phone, organization, state, city, designation, photo, documentProof, documentProofBack, coordinatorCode, attemptId } = req.body;
     const result = await registerPhase3Service({
       name,
       email,
@@ -160,6 +162,7 @@ export const registerPhase3 = async (req, res) => {
       designation,
       photo,
       documentProof,
+      documentProofBack,
       coordinatorCode,
       attemptId
     });

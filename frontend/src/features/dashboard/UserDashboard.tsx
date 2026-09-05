@@ -32,6 +32,7 @@ interface ProfileData {
   designation?: string;
   photo?: string;
   documentProof?: string;
+  documentProofBack?: string;
   paymentStatus: string;
   approvalStatus: string;
   membershipId?: string;
@@ -71,6 +72,7 @@ export default function UserDashboard() {
   // Photo & Document upload state
   const [newPhotoFile, setNewPhotoFile] = useState<File | null>(null);
   const [newDocFile, setNewDocFile] = useState<File | null>(null);
+  const [newDocBackFile, setNewDocBackFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   // Password fields
@@ -178,6 +180,12 @@ export default function UserDashboard() {
     }
   };
 
+  const handleDocBackChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setNewDocBackFile(e.target.files[0]);
+    }
+  };
+
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setActionLoading(true);
@@ -186,6 +194,7 @@ export default function UserDashboard() {
     try {
       let photoKey = profile?.photo;
       let docKey = profile?.documentProof;
+      let docBackKey = profile?.documentProofBack;
 
       // Upload photo if new file selected
       if (newPhotoFile) {
@@ -194,17 +203,25 @@ export default function UserDashboard() {
         photoKey = photoPresigned.key;
       }
 
-      // Upload document proof if new file selected
+      // Upload document proof front if new file selected
       if (newDocFile) {
         const docPresigned = await getPresignedUploadUrl(newDocFile.name, newDocFile.type);
         await uploadFileToS3(docPresigned.uploadUrl, newDocFile);
         docKey = docPresigned.key;
       }
 
+      // Upload document proof back if new file selected
+      if (newDocBackFile) {
+        const docBackPresigned = await getPresignedUploadUrl(newDocBackFile.name, newDocBackFile.type);
+        await uploadFileToS3(docBackPresigned.uploadUrl, newDocBackFile);
+        docBackKey = docBackPresigned.key;
+      }
+
       const res = await updateMemberProfile({
         ...editForm,
         photo: photoKey,
         documentProof: docKey,
+        documentProofBack: docBackKey,
       });
 
       setProfile((prev) => (prev ? { ...prev, ...res.user } : null));
@@ -212,6 +229,7 @@ export default function UserDashboard() {
       setSuccess("Profile details and documents updated successfully.");
       setNewPhotoFile(null);
       setNewDocFile(null);
+      setNewDocBackFile(null);
       setPhotoPreview(null);
     } catch (err: any) {
       setError(err.message || "Failed to update profile details.");
@@ -517,12 +535,30 @@ export default function UserDashboard() {
                           <div className="flex items-center gap-2 min-w-0">
                             <FileText className="h-5 w-5 text-slate-450 flex-shrink-0" />
                             <div className="min-w-0">
-                              <p className="text-xs font-bold text-slate-800 truncate">Identity Proof</p>
+                              <p className="text-xs font-bold text-slate-800 truncate">Aadhar Front Side</p>
                               <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">ID/Doc File</p>
                             </div>
                           </div>
                           <button
                             onClick={() => handleViewSecureFile(profile.documentProof!)}
+                            className="p-1.5 bg-white hover:bg-amber-50 border hover:border-amber-300 text-slate-600 hover:text-amber-700 rounded-xl transition-all shadow-sm flex"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+
+                      {profile.documentProofBack && (
+                        <div className="border rounded-2xl p-4 flex justify-between items-center bg-slate-50/50">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <FileText className="h-5 w-5 text-slate-450 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-slate-800 truncate">Aadhar Back Side</p>
+                              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">ID/Doc File</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleViewSecureFile(profile.documentProofBack!)}
                             className="p-1.5 bg-white hover:bg-amber-50 border hover:border-amber-300 text-slate-600 hover:text-amber-700 rounded-xl transition-all shadow-sm flex"
                           >
                             <Eye className="h-4 w-4" />
@@ -824,16 +860,33 @@ export default function UserDashboard() {
                         </div>
                       </div>
 
-                      {/* Identity Document Proof Upload */}
+                      {/* Aadhar Document Proof Upload - Front */}
                       <div className="space-y-2">
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">ID Document Proof</label>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Aadhar Front Side</label>
                         <div className="flex items-center gap-3">
                           <label className="cursor-pointer inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border">
                             <Upload className="h-3.5 w-3.5" />
-                            {newDocFile ? newDocFile.name.slice(0, 15) + "..." : "Update Document"}
+                            {newDocFile ? newDocFile.name.slice(0, 15) + "..." : "Update Front"}
                             <input type="file" accept="image/*,.pdf" className="hidden" onChange={handleDocChange} />
                           </label>
                           {profile.documentProof && !newDocFile && (
+                            <span className="text-[10px] text-green-600 font-bold flex items-center gap-0.5">
+                              <CheckCircle className="h-3 w-3" /> Uploaded
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Aadhar Document Proof Upload - Back */}
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Aadhar Back Side</label>
+                        <div className="flex items-center gap-3">
+                          <label className="cursor-pointer inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border">
+                            <Upload className="h-3.5 w-3.5" />
+                            {newDocBackFile ? newDocBackFile.name.slice(0, 15) + "..." : "Update Back"}
+                            <input type="file" accept="image/*,.pdf" className="hidden" onChange={handleDocBackChange} />
+                          </label>
+                          {profile.documentProofBack && !newDocBackFile && (
                             <span className="text-[10px] text-green-600 font-bold flex items-center gap-0.5">
                               <CheckCircle className="h-3 w-3" /> Uploaded
                             </span>

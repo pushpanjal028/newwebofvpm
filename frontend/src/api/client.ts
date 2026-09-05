@@ -45,14 +45,23 @@ export const fetchWithAuth = async (endpoint: string, options: RequestInit = {})
   return data;
 };
 
+export const extractS3Key = (url: string) => {
+  if (!url) return "";
+  let key = url;
+  if (key.includes(".amazonaws.com/")) {
+    key = key.split(".amazonaws.com/")[1];
+  } else if (key.startsWith("s3://")) {
+    const parts = key.replace("s3://", "").split("/");
+    key = parts.slice(1).join("/");
+  }
+  return key.trim().replace(/^\/+/, "");
+};
+
 export const getUploadUrl = (relativePath: string) => {
   if (!relativePath) return "";
-  if (relativePath.startsWith("http")) return relativePath;
+  if (relativePath.startsWith("http") && !relativePath.includes(".amazonaws.com/")) return relativePath;
   
-  let key = relativePath.trim();
-  if (key.startsWith("/")) {
-    key = key.substring(1);
-  }
+  let key = extractS3Key(relativePath);
   
   // Do not incorrectly prefix existing valid namespaces like 'temp/'
   if (!key.toLowerCase().startsWith("uploads/") && !key.toLowerCase().startsWith("temp/")) {
@@ -77,7 +86,12 @@ export const uploadFileToS3 = async (presignedUrl: string, file: File) => {
 };
 
 export const fetchSecureDocumentUrl = async (key: string) => {
-  if (!key || !key.startsWith("temp/")) return getUploadUrl(key);
-  const data = await fetchWithAuth(`/uploads/document-url?key=${encodeURIComponent(key)}`);
+  if (!key) return "";
+  
+  const parsedKey = extractS3Key(key);
+
+  if (!parsedKey.startsWith("temp/")) return getUploadUrl(key.startsWith("s3://") ? parsedKey : key);
+  
+  const data = await fetchWithAuth(`/uploads/document-url?key=${encodeURIComponent(parsedKey)}`);
   return data.signedUrl;
 };

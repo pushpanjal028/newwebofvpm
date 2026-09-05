@@ -1118,7 +1118,15 @@ export default function AdminDashboard() {
                           onClick={() => handleViewSecureDocument(inspectingMember.documentProof)}
                           className="flex items-center gap-1 bg-slate-50 border p-2 rounded-xl text-xs hover:border-amber-300 font-bold transition-all text-slate-700"
                         >
-                          <FileText className="h-3.5 w-3.5" /> ID Doc Proof
+                          <FileText className="h-3.5 w-3.5" /> Aadhar Front
+                        </button>
+                      )}
+                      {inspectingMember.documentProofBack && (
+                        <button
+                          onClick={() => handleViewSecureDocument(inspectingMember.documentProofBack)}
+                          className="flex items-center gap-1 bg-slate-50 border p-2 rounded-xl text-xs hover:border-amber-300 font-bold transition-all text-slate-700"
+                        >
+                          <FileText className="h-3.5 w-3.5" /> Aadhar Back
                         </button>
                       )}
                     </div>

@@ -14,7 +14,8 @@ const userSchema = new mongoose.Schema(
     
     // Uploaded paths
     photo: { type: String }, // Profile photo file path
-    documentProof: { type: String }, // ID/Document proof file path
+    documentProof: { type: String }, // ID/Document proof front side file path
+    documentProofBack: { type: String }, // ID/Document proof back side file path
 
     // Membership details
     membershipFee: { type: Number, default: 100 },

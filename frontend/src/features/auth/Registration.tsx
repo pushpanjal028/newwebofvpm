@@ -24,6 +24,8 @@ export default function Registration() {
   const [photoName, setPhotoName] = useState("");
   const [documentProofKey, setDocumentProofKey] = useState("");
   const [documentProofName, setDocumentProofName] = useState("");
+  const [documentProofBackKey, setDocumentProofBackKey] = useState("");
+  const [documentProofBackName, setDocumentProofBackName] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -54,6 +56,8 @@ export default function Registration() {
           if (draft.photoName) setPhotoName(draft.photoName);
           if (draft.documentProofKey) setDocumentProofKey(draft.documentProofKey);
           if (draft.documentProofName) setDocumentProofName(draft.documentProofName);
+          if (draft.documentProofBackKey) setDocumentProofBackKey(draft.documentProofBackKey);
+          if (draft.documentProofBackName) setDocumentProofBackName(draft.documentProofBackName);
         } else {
           localStorage.removeItem("vpmh_registration_draft");
         }
@@ -81,10 +85,12 @@ export default function Registration() {
       photoName,
       documentProofKey,
       documentProofName,
+      documentProofBackKey,
+      documentProofBackName,
       timestamp: new Date().getTime(),
     };
     localStorage.setItem("vpmh_registration_draft", JSON.stringify(draft));
-  }, [formData.fullName, formData.email, formData.phone, formData.state, formData.city, formData.designation, formData.coordinatorCode, attemptId, photoKey, photoName, documentProofKey, documentProofName]);
+  }, [formData.fullName, formData.email, formData.phone, formData.state, formData.city, formData.designation, formData.coordinatorCode, attemptId, photoKey, photoName, documentProofKey, documentProofName, documentProofBackKey, documentProofBackName]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -140,7 +146,34 @@ export default function Registration() {
         setDocumentProofName(file.name);
       } catch (err: any) {
         console.error("❌ Document upload error:", err);
-        setError("ID/Document proof upload failed. Please try again.");
+        setError("Aadhar Front Side upload failed. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleDocumentBackChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setLoading(true);
+      setError("");
+      try {
+        let currentAttemptId = attemptId;
+        if (!currentAttemptId) {
+          const res = await initRegistration();
+          currentAttemptId = res.attemptId;
+          setAttemptId(res.attemptId);
+        }
+
+        const presigned = await getPresignedUploadUrl(file.name, file.type, currentAttemptId);
+        await uploadFileToS3(presigned.uploadUrl, file);
+        
+        setDocumentProofBackKey(presigned.key);
+        setDocumentProofBackName(file.name);
+      } catch (err: any) {
+        console.error("❌ Document upload error:", err);
+        setError("Aadhar Back Side upload failed. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -150,8 +183,8 @@ export default function Registration() {
   // Submit full registration details
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!photoKey && !documentProofKey) {
-      setError("Please upload your profile photo and ID/document proof.");
+    if (!photoKey && !documentProofKey && !documentProofBackKey) {
+      setError("Please upload your profile photo and Aadhar front/back sides.");
       return;
     }
     if (!photoKey) {
@@ -159,7 +192,11 @@ export default function Registration() {
       return;
     }
     if (!documentProofKey) {
-      setError("Please upload your ID/document proof.");
+      setError("Please upload your Aadhar Front Side.");
+      return;
+    }
+    if (!documentProofBackKey) {
+      setError("Please upload your Aadhar Back Side.");
       return;
     }
     if (!attemptId) {
@@ -182,6 +219,7 @@ export default function Registration() {
         password: formData.password,
         photo: photoKey,
         documentProof: documentProofKey,
+        documentProofBack: documentProofBackKey,
         coordinatorCode: formData.coordinatorCode || undefined,
         attemptId,
       };
@@ -447,10 +485,10 @@ export default function Registration() {
                 </div>
               </div>
 
-              {/* ID Document Proof */}
+              {/* ID Document Proof Front */}
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  ID/Document Proof (JPG/PNG/PDF, Max 5MB) *
+                  Aadhar Front Side (JPG/PNG/PDF, Max 5MB) *
                 </label>
                 <div className="border-2 border-dashed border-slate-250 rounded-2xl p-4 text-center hover:border-amber-500 transition-all bg-slate-50/50">
                   <FileText className="h-8 w-8 text-slate-400 mx-auto mb-2" />
@@ -463,7 +501,29 @@ export default function Registration() {
                   />
                   {documentProofKey && (
                     <p className="text-[10px] text-green-600 font-bold mt-2 truncate">
-                      ✓ ID/document proof uploaded ({documentProofName || "saved"})
+                      ✓ Aadhar front side uploaded ({documentProofName || "saved"})
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* ID Document Proof Back */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Aadhar Back Side (JPG/PNG/PDF, Max 5MB) *
+                </label>
+                <div className="border-2 border-dashed border-slate-250 rounded-2xl p-4 text-center hover:border-amber-500 transition-all bg-slate-50/50">
+                  <FileText className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+                  <input
+                    type="file"
+                    accept="image/jpeg, image/png, application/pdf"
+                    required={!documentProofBackKey}
+                    onChange={handleDocumentBackChange}
+                    className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100"
+                  />
+                  {documentProofBackKey && (
+                    <p className="text-[10px] text-green-600 font-bold mt-2 truncate">
+                      ✓ Aadhar back side uploaded ({documentProofBackName || "saved"})
                     </p>
                   )}
                 </div>

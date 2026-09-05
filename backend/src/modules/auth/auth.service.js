@@ -73,7 +73,8 @@ export const registerUserService = async ({
   designation,
   otp,
   photo,
-  documentProof
+  documentProof,
+  documentProofBack
 }) => {
   if (!name || !email || !password || !phone || !state || !city || !designation || !otp) {
     throw new Error("All required fields and OTP verification code must be provided.");
@@ -106,6 +107,7 @@ export const registerUserService = async ({
     designation,
     photo: photo || "",
     documentProof: documentProof || "",
+    documentProofBack: documentProofBack || "",
     paymentStatus: "pending",
     approvalStatus: "pending",
   });
@@ -225,7 +227,7 @@ export const getCurrentProfileService = async (userId) => {
   return user;
 };
 
-export const updateProfileService = async (userId, { name, phone, organization, state, city, designation, photo, documentProof }) => {
+export const updateProfileService = async (userId, { name, phone, organization, state, city, designation, photo, documentProof, documentProofBack }) => {
   const user = await User.findById(userId);
   if (!user) {
     throw new Error("User not found");
@@ -239,6 +241,7 @@ export const updateProfileService = async (userId, { name, phone, organization, 
   if (designation !== undefined) user.designation = designation;
   if (photo !== undefined) user.photo = photo;
   if (documentProof !== undefined) user.documentProof = documentProof;
+  if (documentProofBack !== undefined) user.documentProofBack = documentProofBack;
 
   await user.save();
 
@@ -257,6 +260,7 @@ export const updateProfileService = async (userId, { name, phone, organization, 
       designation: user.designation,
       photo: user.photo,
       documentProof: user.documentProof,
+      documentProofBack: user.documentProofBack,
       paymentStatus: user.paymentStatus,
       approvalStatus: user.approvalStatus,
       membershipId: user.membershipId,
@@ -412,7 +416,7 @@ export const sendVerificationEmailService = async (user) => {
 };
 
 export const registerPhase3Service = async ({
-  name, email, password, phone, organization, state, city, designation, photo, documentProof, coordinatorCode, attemptId
+  name, email, password, phone, organization, state, city, designation, photo, documentProof, documentProofBack, coordinatorCode, attemptId
 }) => {
   if (!name || !email || !password || !phone) {
     throw new Error("Name, email, password, and phone are required.");
@@ -423,7 +427,11 @@ export const registerPhase3Service = async ({
   }
 
   if (!documentProof) {
-    throw new Error("ID/Document proof is required.");
+    throw new Error("ID/Document proof front side is required.");
+  }
+
+  if (!documentProofBack) {
+    throw new Error("ID/Document proof back side is required.");
   }
 
   if (!attemptId) {
@@ -437,8 +445,9 @@ export const registerPhase3Service = async ({
 
   const isValidPhoto = attempt.keys.some(k => photo.endsWith(k));
   const isValidDocument = attempt.keys.some(k => documentProof.endsWith(k));
+  const isValidDocumentBack = attempt.keys.some(k => documentProofBack.endsWith(k));
 
-  if (!isValidPhoto || !isValidDocument) {
+  if (!isValidPhoto || !isValidDocument || !isValidDocumentBack) {
     throw new Error("Uploaded documents are invalid or do not belong to this registration session.");
   }
 
@@ -473,6 +482,7 @@ export const registerPhase3Service = async ({
     designation: designation || "",
     photo: photo || "",
     documentProof: documentProof || "",
+    documentProofBack: documentProofBack || "",
     coordinatorCode: newCoordinatorCode,
     referredBy: referredByUserId,
     isEmailVerified: false,

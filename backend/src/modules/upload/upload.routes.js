@@ -7,6 +7,7 @@ import { generatePresignedPutUrl, generatePresignedGetUrl, deleteS3Object } from
 import RegistrationAttempt from "../../models/RegistrationAttempt.js";
 import PaymentAttempt from "../../models/PaymentAttempt.js";
 import User from "../../models/User.js";
+import MemberCard from "../../models/MemberCard.js";
 import auth from "../../middlewares/auth.js";
 
 const router = express.Router();
@@ -194,15 +195,26 @@ router.get("/document-url", auth, async (req, res) => {
       return res.status(400).json({ message: "Document key is required." });
     }
 
-    // Only allow signed URLs for temp namespace (private documents)
-    if (!key.startsWith("temp/")) {
+    // Only allow signed URLs for temp or uploads namespace
+    if (!key.startsWith("temp/") && !key.startsWith("uploads/")) {
       return res.status(400).json({ message: "Invalid document namespace." });
     }
 
     // Verify ownership or admin access
-    const owner = await User.findOne({ 
-      $or: [{ photo: key }, { documentProof: key }, { paymentScreenshot: key }] 
+    let owner = await User.findOne({ 
+      $or: [
+        { photo: { $regex: key + "$", $options: "i" } }, 
+        { documentProof: { $regex: key + "$", $options: "i" } }, 
+        { paymentScreenshot: { $regex: key + "$", $options: "i" } }
+      ] 
     });
+
+    if (!owner) {
+      const memberCard = await MemberCard.findOne({ pdfUrl: { $regex: key + "$", $options: "i" } });
+      if (memberCard) {
+        owner = await User.findById(memberCard.userId);
+      }
+    }
 
     if (!req.user.isAdmin) {
       if (!owner || owner._id.toString() !== req.user._id.toString()) {
@@ -228,7 +240,7 @@ router.get(/^\/view\/(.+)$/, async (req, res, next) => {
   const key = req.params[0];
   if (key && key.includes("temp/")) {
     try {
-      const isPhoto = await User.exists({ photo: key });
+      const isPhoto = await User.exists({ photo: { $regex: key + "$", $options: "i" } });
       if (isPhoto) {
         return next();
       }
@@ -240,7 +252,20 @@ router.get(/^\/view\/(.+)$/, async (req, res, next) => {
       try {
         if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
-        const owner = await User.findOne({ $or: [{ photo: key }, { documentProof: key }, { paymentScreenshot: key }] });
+        let owner = await User.findOne({ 
+          $or: [
+            { photo: { $regex: key + "$", $options: "i" } }, 
+            { documentProof: { $regex: key + "$", $options: "i" } }, 
+            { paymentScreenshot: { $regex: key + "$", $options: "i" } }
+          ] 
+        });
+
+        if (!owner) {
+          const memberCard = await MemberCard.findOne({ pdfUrl: { $regex: key + "$", $options: "i" } });
+          if (memberCard) {
+            owner = await User.findById(memberCard.userId);
+          }
+        }
         
         if (!req.user.isAdmin) {
           if (!owner || owner._id.toString() !== req.user._id.toString()) {
