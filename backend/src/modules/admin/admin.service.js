@@ -82,10 +82,19 @@ export const getMembersService = async ({ page, limit, search, paymentStatus, ap
   const members = await User.find(query)
     .sort({ createdAt: -1 })
     .skip(skipIndex)
-    .limit(limit);
+    .limit(limit)
+    .lean();
+
+  const memberIds = members.map(m => m._id);
+  const memberCards = await MemberCard.find({ userId: { $in: memberIds } }).lean();
+
+  const membersWithCards = members.map(member => {
+    const card = memberCards.find(c => c.userId.toString() === member._id.toString());
+    return { ...member, memberCard: card || null };
+  });
 
   return {
-    members,
+    members: membersWithCards,
     page,
     limit,
     totalPages: Math.ceil(total / limit),
@@ -112,7 +121,7 @@ export const getAuditLogsService = async ({ page, limit }) => {
   };
 };
 
-export const updateMemberDetailsService = async (adminUser, id, { name, phone, organization, state, city, designation, photo, documentProof, documentProofBack }) => {
+export const updateMemberDetailsService = async (adminUser, id, { name, phone, organization, state, city, designation, photo, documentProof, documentProofBack, paymentScreenshot, paymentReferenceId, paymentStatus }) => {
   const user = await User.findById(id);
   if (!user) {
     throw new Error("User not found.");
@@ -128,6 +137,9 @@ export const updateMemberDetailsService = async (adminUser, id, { name, phone, o
     photo: user.photo,
     documentProof: user.documentProof,
     documentProofBack: user.documentProofBack,
+    paymentScreenshot: user.paymentScreenshot,
+    paymentReferenceId: user.paymentReferenceId,
+    paymentStatus: user.paymentStatus,
   };
 
   if (name !== undefined) user.name = name;
@@ -139,6 +151,9 @@ export const updateMemberDetailsService = async (adminUser, id, { name, phone, o
   if (photo !== undefined) user.photo = photo;
   if (documentProof !== undefined) user.documentProof = documentProof;
   if (documentProofBack !== undefined) user.documentProofBack = documentProofBack;
+  if (paymentScreenshot !== undefined) user.paymentScreenshot = paymentScreenshot;
+  if (paymentReferenceId !== undefined) user.paymentReferenceId = paymentReferenceId;
+  if (paymentStatus !== undefined) user.paymentStatus = paymentStatus;
 
   const newValue = {
     name: user.name,
@@ -149,6 +164,9 @@ export const updateMemberDetailsService = async (adminUser, id, { name, phone, o
     designation: user.designation,
     photo: user.photo,
     documentProof: user.documentProof,
+    paymentScreenshot: user.paymentScreenshot,
+    paymentReferenceId: user.paymentReferenceId,
+    paymentStatus: user.paymentStatus,
   };
 
   await user.save();

@@ -246,6 +246,11 @@ export default function AdminDashboard() {
   const [showRejectPaymentModal, setShowRejectPaymentModal] = useState(false);
   const [showRejectMembershipModal, setShowRejectMembershipModal] = useState(false);
 
+  // Admin Manual Payment Upload State
+  const [showAdminUploadPayment, setShowAdminUploadPayment] = useState(false);
+  const [adminManualTxnId, setAdminManualTxnId] = useState("");
+  const [adminManualReceiptFile, setAdminManualReceiptFile] = useState<File | null>(null);
+
   const handleViewSecureDocument = async (fileKey: string) => {
     setPreviewLoading(true);
     setPreviewError("");
@@ -473,6 +478,55 @@ export default function AdminDashboard() {
       fetchMembers();
     } catch (err: any) {
       setError(err.message || "Failed to update member.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleAdminManualPaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inspectingMember) return;
+    if (!adminManualReceiptFile || !adminManualTxnId.trim()) {
+      setError("Please provide both a transaction ID and a receipt image.");
+      return;
+    }
+    
+    setActionLoading(true);
+    setError("");
+    setSuccess("");
+    
+    try {
+      // 1. Upload the image
+      const presigned = await getPresignedUploadUrl(adminManualReceiptFile.name, adminManualReceiptFile.type, undefined, `manual_${Date.now()}`);
+      await uploadFileToS3(presigned.uploadUrl, adminManualReceiptFile);
+      
+      // 2. Update the member details
+      await updateMemberDetails(inspectingMember._id, {
+        paymentScreenshot: presigned.key,
+        paymentReferenceId: adminManualTxnId.trim(),
+        paymentStatus: "paid" // Automatically marking as paid since Admin is uploading it
+      });
+      
+      setSuccess("Manual payment receipt uploaded and verified successfully.");
+      
+      // Update inspecting member state
+      setInspectingMember({
+        ...inspectingMember,
+        paymentScreenshot: presigned.key,
+        paymentReferenceId: adminManualTxnId.trim(),
+        paymentStatus: "paid"
+      });
+      
+      // Reset form
+      setShowAdminUploadPayment(false);
+      setAdminManualTxnId("");
+      setAdminManualReceiptFile(null);
+      
+      // Refresh list
+      fetchMembers();
+      fetchStats();
+    } catch (err: any) {
+      setError(err.message || "Failed to upload manual payment receipt.");
     } finally {
       setActionLoading(false);
     }
@@ -1410,7 +1464,18 @@ export default function AdminDashboard() {
 
                   {/* Payment Details inspect */}
                   <div className="border rounded-2xl p-4 space-y-2">
-                    <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Transaction Metadata</h5>
+                    <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex justify-between items-center">
+                      <span>Transaction Metadata</span>
+                      {!inspectingMember.paymentReferenceId && !showAdminUploadPayment && (
+                        <button
+                          onClick={() => setShowAdminUploadPayment(true)}
+                          className="text-amber-600 hover:text-amber-700 bg-amber-50 px-2 py-1 rounded-lg transition-all"
+                        >
+                          + Upload Manual Receipt
+                        </button>
+                      )}
+                    </h5>
+                    
                     {inspectingMember.paymentReferenceId ? (
                       <div className="space-y-2">
                         <p className="text-xs">
@@ -1423,6 +1488,46 @@ export default function AdminDashboard() {
                           <Eye className="h-3.5 w-3.5" /> View Payment Screenshot
                         </button>
                       </div>
+                    ) : showAdminUploadPayment ? (
+                      <form onSubmit={handleAdminManualPaymentSubmit} className="mt-3 space-y-3 p-3 bg-amber-50/50 rounded-xl border border-amber-200">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wide mb-1">Transaction ID *</label>
+                          <input
+                            type="text"
+                            required
+                            value={adminManualTxnId}
+                            onChange={(e) => setAdminManualTxnId(e.target.value)}
+                            className="w-full text-xs px-2 py-1.5 border rounded-lg"
+                            placeholder="e.g. UPI Ref No."
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wide mb-1">Receipt Image *</label>
+                          <input
+                            type="file"
+                            required
+                            accept="image/*"
+                            onChange={(e) => setAdminManualReceiptFile(e.target.files?.[0] || null)}
+                            className="w-full text-[10px] file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:bg-amber-100 file:text-amber-700"
+                          />
+                        </div>
+                        <div className="flex justify-end gap-2 pt-2">
+                          <button
+                            type="button"
+                            onClick={() => { setShowAdminUploadPayment(false); setAdminManualReceiptFile(null); setAdminManualTxnId(""); }}
+                            className="px-2 py-1 text-[10px] text-slate-500 hover:bg-slate-100 rounded"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={actionLoading}
+                            className="px-3 py-1 bg-amber-600 text-white text-[10px] font-bold rounded hover:bg-amber-700"
+                          >
+                            Upload & Verify
+                          </button>
+                        </div>
+                      </form>
                     ) : (
                       <p className="text-xs text-slate-450 italic">No manual transaction uploaded yet.</p>
                     )}

@@ -227,10 +227,24 @@ export const getCurrentProfileService = async (userId) => {
   return user;
 };
 
-export const updateProfileService = async (userId, { name, phone, organization, state, city, designation, photo, documentProof, documentProofBack }) => {
+export const updateProfileService = async (userId, { name, phone, organization, state, city, designation, photo, documentProof, documentProofBack, paymentScreenshot, paymentReferenceId }) => {
   const user = await User.findById(userId);
   if (!user) {
     throw new Error("User not found");
+  }
+
+  if (paymentReferenceId !== undefined && paymentReferenceId.trim() !== "") {
+    // Check duplicate transaction ID (excluding current user)
+    const duplicateTxn = await User.findOne({ 
+      paymentReferenceId: paymentReferenceId.trim(),
+      _id: { $ne: user._id }
+    });
+    if (duplicateTxn) {
+      throw new Error("This Transaction ID has already been submitted by another user.");
+    }
+    user.paymentReferenceId = paymentReferenceId.trim();
+    if (paymentScreenshot !== undefined) user.paymentScreenshot = paymentScreenshot;
+    user.paymentStatus = "verification_pending";
   }
 
   if (name !== undefined) user.name = name;
@@ -262,6 +276,8 @@ export const updateProfileService = async (userId, { name, phone, organization, 
       documentProof: user.documentProof,
       documentProofBack: user.documentProofBack,
       paymentStatus: user.paymentStatus,
+      paymentReferenceId: user.paymentReferenceId,
+      paymentScreenshot: user.paymentScreenshot,
       approvalStatus: user.approvalStatus,
       membershipId: user.membershipId,
       issueDate: user.issueDate,

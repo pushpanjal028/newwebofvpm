@@ -225,7 +225,7 @@ export const generateCardPDF = async (memberData) => {
           position: relative;
           z-index: 10;
           display: flex;
-          margin-top: 50px; /* Restored to prevent photo overlapping curve */
+          margin-top: 75px; /* Increased to prevent photo overlapping curve */
           padding: 0 40px;
           gap: 20px; /* Reduced gap */
           align-items: flex-start;
@@ -564,7 +564,7 @@ export const generateCardPDF = async (memberData) => {
 
     const pdfBuffer = await page.pdf({
       width: '550px',
-      height: '900px',
+      height: '1050px',
       printBackground: true,
       margin: { top: '0px', bottom: '0px', left: '0px', right: '0px' }
     });

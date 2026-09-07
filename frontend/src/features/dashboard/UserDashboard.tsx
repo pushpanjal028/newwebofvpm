@@ -75,6 +75,11 @@ export default function UserDashboard() {
   const [newDocBackFile, setNewDocBackFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
+  // Payment upload state
+  const [showPaymentUpload, setShowPaymentUpload] = useState(false);
+  const [paymentTxnId, setPaymentTxnId] = useState("");
+  const [paymentReceiptFile, setPaymentReceiptFile] = useState<File | null>(null);
+
   // Password fields
   const [passForm, setPassForm] = useState({
     oldPassword: "",
@@ -233,6 +238,42 @@ export default function UserDashboard() {
       setPhotoPreview(null);
     } catch (err: any) {
       setError(err.message || "Failed to update profile details.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleUserPaymentUploadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!paymentReceiptFile || !paymentTxnId.trim()) {
+      setError("Please provide both a transaction ID and a receipt image.");
+      return;
+    }
+
+    setActionLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      // 1. Upload the image
+      const presigned = await getPresignedUploadUrl(paymentReceiptFile.name, paymentReceiptFile.type, undefined, `reupload_${Date.now()}`);
+      await uploadFileToS3(presigned.uploadUrl, paymentReceiptFile);
+
+      // 2. Update the profile
+      const res = await updateMemberProfile({
+        paymentScreenshot: presigned.key,
+        paymentReferenceId: paymentTxnId.trim(),
+      });
+
+      setProfile((prev) => (prev ? { ...prev, ...res.user } : null));
+      localStorage.setItem("vpm_user", JSON.stringify(res.user));
+      
+      setSuccess("Payment receipt uploaded successfully. It is now pending verification.");
+      setShowPaymentUpload(false);
+      setPaymentTxnId("");
+      setPaymentReceiptFile(null);
+    } catch (err: any) {
+      setError(err.message || "Failed to upload payment receipt.");
     } finally {
       setActionLoading(false);
     }
@@ -471,10 +512,58 @@ export default function UserDashboard() {
                                 <strong>Reason:</strong> {profile.paymentRejectionReason}
                               </div>
                             )}
-                            <p className="text-[10px] text-slate-500 leading-relaxed">Please submit your UPI transaction reference to activate reviews.</p>
-                            <Link to="/payment" className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 hover:text-amber-700 mt-1.5">
-                              {profile.paymentStatus === "rejected" ? "Re-upload Fee details →" : "Submit Fee details →"}
-                            </Link>
+                            
+                            {!showPaymentUpload ? (
+                              <div>
+                                <p className="text-[10px] text-slate-500 leading-relaxed">Please submit your UPI transaction reference to activate reviews.</p>
+                                <button 
+                                  onClick={() => setShowPaymentUpload(true)}
+                                  className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 hover:text-amber-700 mt-1.5"
+                                >
+                                  {profile.paymentStatus === "rejected" ? "Re-upload Fee details →" : "Submit Fee details →"}
+                                </button>
+                              </div>
+                            ) : (
+                              <form onSubmit={handleUserPaymentUploadSubmit} className="mt-3 space-y-3 p-3 bg-amber-50/50 rounded-xl border border-amber-200">
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wide mb-1">Transaction ID *</label>
+                                  <input
+                                    type="text"
+                                    required
+                                    value={paymentTxnId}
+                                    onChange={(e) => setPaymentTxnId(e.target.value)}
+                                    className="w-full text-xs px-2 py-1.5 border rounded-lg"
+                                    placeholder="e.g. UPI Ref No."
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wide mb-1">Receipt Image *</label>
+                                  <input
+                                    type="file"
+                                    required
+                                    accept="image/*"
+                                    onChange={(e) => setPaymentReceiptFile(e.target.files?.[0] || null)}
+                                    className="w-full text-[10px] file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:bg-amber-100 file:text-amber-700"
+                                  />
+                                </div>
+                                <div className="flex justify-end gap-2 pt-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => { setShowPaymentUpload(false); setPaymentReceiptFile(null); setPaymentTxnId(""); }}
+                                    className="px-2 py-1 text-[10px] text-slate-500 hover:bg-slate-100 rounded"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="submit"
+                                    disabled={actionLoading}
+                                    className="px-3 py-1 bg-amber-600 text-white text-[10px] font-bold rounded hover:bg-amber-700 flex items-center gap-1"
+                                  >
+                                    {actionLoading ? "Uploading..." : "Upload & Submit"}
+                                  </button>
+                                </div>
+                              </form>
+                            )}
                           </div>
                         )}
                         {profile.paymentStatus === "verification_pending" && (

@@ -58,7 +58,7 @@ export const getAuditLogs = async (req, res) => {
 
 export const updateMemberDetails = async (req, res) => {
   try {
-    const { name, phone, organization, state, city, designation, photo, documentProof, documentProofBack } = req.body;
+    const { name, phone, organization, state, city, designation, photo, documentProof, documentProofBack, paymentScreenshot, paymentReferenceId, paymentStatus } = req.body;
     const result = await updateMemberDetailsService(req.user, req.params.id, {
       name,
       phone,
@@ -69,6 +69,9 @@ export const updateMemberDetails = async (req, res) => {
       photo,
       documentProof,
       documentProofBack,
+      paymentScreenshot,
+      paymentReferenceId,
+      paymentStatus,
     });
     res.json(result);
   } catch (err) {

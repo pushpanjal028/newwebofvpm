@@ -86,7 +86,7 @@ export const getCurrentProfile = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    const { name, phone, organization, state, city, designation, photo, documentProof, documentProofBack } = req.body;
+    const { name, phone, organization, state, city, designation, photo, documentProof, documentProofBack, paymentScreenshot, paymentReferenceId } = req.body;
     const result = await updateProfileService(req.user._id, {
       name,
       phone,
@@ -97,6 +97,8 @@ export const updateProfile = async (req, res) => {
       photo,
       documentProof,
       documentProofBack,
+      paymentScreenshot,
+      paymentReferenceId,
     });
     res.json(result);
   } catch (err) {
