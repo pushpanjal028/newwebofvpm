@@ -272,9 +272,11 @@ export default function AdminDashboard() {
     designation: "",
     photo: "",
     documentProof: "",
+    documentProofBack: "",
   });
   const [editPhotoLoading, setEditPhotoLoading] = useState(false);
   const [editDocLoading, setEditDocLoading] = useState(false);
+  const [editDocBackLoading, setEditDocBackLoading] = useState(false);
 
   const handleEditPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -306,6 +308,23 @@ export default function AdminDashboard() {
         setError(err.message || "Failed to upload document");
       } finally {
         setEditDocLoading(false);
+      }
+    }
+  };
+
+  const handleEditDocBackUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setEditDocBackLoading(true);
+      try {
+        const presigned = await getPresignedUploadUrl(file.name, file.type);
+        await uploadFileToS3(presigned.uploadUrl, file);
+        setEditFormData({ ...editFormData, documentProofBack: presigned.key });
+        setSuccess("Aadhar back uploaded and staged for save.");
+      } catch (err: any) {
+        setError(err.message || "Failed to upload aadhar back");
+      } finally {
+        setEditDocBackLoading(false);
       }
     }
   };
@@ -471,6 +490,7 @@ export default function AdminDashboard() {
       designation: member.designation || "",
       photo: member.photo || "",
       documentProof: member.documentProof || "",
+      documentProofBack: member.documentProofBack || "",
     });
   };
 
@@ -831,7 +851,7 @@ export default function AdminDashboard() {
                                   <Check className="h-3 w-3" /> Approved
                                 </span>
                                 {member.membershipId && (
-                                  <p className="text-[9px] font-bold text-amber-600 font-mono">{member.membershipId}</p>
+                                  <p className="text-[9px] font-bold text-amber-600 font-mono">{member.membershipId.toLowerCase()}</p>
                                 )}
                               </div>
                             )}
@@ -1739,6 +1759,25 @@ export default function AdminDashboard() {
                         {editDocLoading ? <Loader2 className="h-3 w-3 animate-spin text-slate-500" /> : <Upload className="h-3 w-3 text-slate-500" />}
                         <span className="text-slate-600 font-medium">{editDocLoading ? "Uploading..." : "Upload New Doc"}</span>
                         <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleEditDocUpload} disabled={editDocLoading} />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 mt-4 sm:mt-0 col-span-2">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Update Document (Back)</label>
+                    <div className="flex flex-col gap-2">
+                      {editFormData.documentProofBack && (
+                        <div className="flex items-center gap-2 p-2 bg-slate-50 border rounded-lg">
+                          <span className="text-[10px] truncate max-w-[120px] text-slate-600">Existing/Staged Doc</span>
+                          <button type="button" onClick={() => handleViewSecureDocument(editFormData.documentProofBack)} className="ml-auto text-blue-500 hover:text-blue-700">
+                            <Eye className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
+                      <label className={`flex items-center justify-center gap-2 px-3 py-2 border border-dashed rounded-xl text-xs cursor-pointer transition-colors ${editDocBackLoading ? 'bg-slate-100 border-slate-300' : 'bg-slate-50 hover:bg-slate-100 border-slate-300'}`}>
+                        {editDocBackLoading ? <Loader2 className="h-3 w-3 animate-spin text-slate-500" /> : <Upload className="h-3 w-3 text-slate-500" />}
+                        <span className="text-slate-600 font-medium">{editDocBackLoading ? "Uploading..." : "Upload New Doc"}</span>
+                        <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleEditDocBackUpload} disabled={editDocBackLoading} />
                       </label>
                     </div>
                   </div>

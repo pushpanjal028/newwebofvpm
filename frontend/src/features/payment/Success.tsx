@@ -136,11 +136,9 @@ export default function Success() {
                 </div>
 
                 {profile.approvalStatus === "approved" && profile.membershipId && (
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-bold text-slate-500 uppercase tracking-wider">Journalist ID Code</span>
-                    <span className="font-mono font-black text-amber-700 tracking-wider">
-                      {profile.membershipId}
-                    </span>
+                  <div className="bg-slate-100 p-3 rounded-lg border flex items-center justify-between mt-2">
+                    <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Membership ID</span>
+                    <span className="font-mono text-amber-700 font-bold tracking-wider">{profile.membershipId?.toLowerCase()}</span>
                   </div>
                 )}
               </div>

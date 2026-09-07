@@ -116,7 +116,7 @@ router.post("/cleanup", async (req, res) => {
       const REGION = process.env.AWS_REGION || "us-east-1";
       const publicUrl = `https://${BUCKET_NAME}.s3.${REGION}.amazonaws.com/${key}`;
       
-      const userRef = await User.findOne({ $or: [{ photo: publicUrl }, { documentProof: publicUrl }] });
+      const userRef = await User.findOne({ $or: [{ photo: publicUrl }, { documentProof: publicUrl }, { documentProofBack: publicUrl }] });
       if (userRef) {
         console.warn(`⚠️ Warning: Key ${key} is referenced by an active user. Skipping deletion.`);
         continue;
@@ -205,6 +205,7 @@ router.get("/document-url", auth, async (req, res) => {
       $or: [
         { photo: { $regex: key + "$", $options: "i" } }, 
         { documentProof: { $regex: key + "$", $options: "i" } }, 
+        { documentProofBack: { $regex: key + "$", $options: "i" } }, 
         { paymentScreenshot: { $regex: key + "$", $options: "i" } }
       ] 
     });
@@ -256,6 +257,7 @@ router.get(/^\/view\/(.+)$/, async (req, res, next) => {
           $or: [
             { photo: { $regex: key + "$", $options: "i" } }, 
             { documentProof: { $regex: key + "$", $options: "i" } }, 
+            { documentProofBack: { $regex: key + "$", $options: "i" } }, 
             { paymentScreenshot: { $regex: key + "$", $options: "i" } }
           ] 
         });

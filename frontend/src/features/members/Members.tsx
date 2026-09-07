@@ -215,7 +215,7 @@ export default function Members() {
                     <div className="border-t pt-4 mt-6 flex justify-between items-center text-xs">
                       <div>
                         <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest leading-none">Membership ID</p>
-                        <p className="font-mono text-amber-700 font-bold tracking-wider mt-1">{member.membershipId}</p>
+                        <p className="font-mono text-amber-700 font-bold tracking-wider mt-1">{member.membershipId?.toLowerCase()}</p>
                       </div>
                       
                       <Link

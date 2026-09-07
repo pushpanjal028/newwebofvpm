@@ -90,6 +90,18 @@ export default function Payment() {
     }
   };
 
+  // Unload warning if image uploaded but not submitted
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (screenshotKey && !success) {
+        e.preventDefault();
+        e.returnValue = "You have attached an image but not submitted the form. Are you sure you want to leave?";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [screenshotKey, success]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!screenshotKey) {
@@ -328,20 +340,34 @@ export default function Payment() {
                     onChange={handleFileChange}
                     className="block w-full text-[10px] text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100"
                   />
-                  {screenshotKey && (
+                  {screenshotKey && !success ? (
+                    <div className="mt-2 p-3 bg-red-50 border-2 border-red-200 rounded-xl text-left animate-pulse shadow-sm">
+                      <p className="text-[11px] text-red-700 font-black flex items-center gap-1.5 uppercase tracking-wide">
+                        <AlertCircle className="h-4 w-4" />
+                        File attached, but NOT submitted!
+                      </p>
+                      <p className="text-[10px] text-red-600 mt-1 font-bold">
+                        Please fill the form and click the big submit button below to finish your payment upload.
+                      </p>
+                    </div>
+                  ) : screenshotKey && success ? (
                     <p className="text-[10px] text-green-600 font-bold mt-1.5 truncate">
                       ✓ Screenshot uploaded ({screenshotName || "saved"})
                     </p>
-                  )}
+                  ) : null}
                 </div>
               </div>
 
               <button
                 type="submit"
                 disabled={loading || success}
-                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 py-3 rounded-xl font-bold text-xs tracking-wider transition-all disabled:opacity-50 hover:scale-[1.01] flex items-center justify-center gap-1.5 shadow-md"
+                className={`w-full py-4 rounded-xl font-black text-xs tracking-widest uppercase transition-all shadow-lg flex items-center justify-center gap-2 ${
+                  screenshotKey && !success 
+                    ? "bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-500 hover:to-red-600 animate-pulse scale-105" 
+                    : "bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 hover:from-amber-400 hover:to-amber-500 disabled:opacity-50 hover:scale-[1.02]"
+                }`}
               >
-                <span>{loading ? "Submitting details..." : "Submit Verification Request"}</span>
+                <span>{loading ? "Submitting details..." : screenshotKey && !success ? "CLICK HERE TO SUBMIT" : "Submit Verification Request"}</span>
               </button>
             </form>
           </div>

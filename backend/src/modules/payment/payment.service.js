@@ -25,19 +25,26 @@ export const submitPaymentReceiptService = async (emailOrPhone, transactionId, p
     throw new Error("Uploaded payment screenshot is invalid or does not belong to this session.");
   }
 
-  // Check duplicate transaction ID
-  const duplicateTxn = await User.findOne({ paymentReferenceId: transactionId });
-  if (duplicateTxn) {
-    throw new Error("This Transaction ID has already been submitted.");
-  }
-
-  // Find member
+  const cleanInput = emailOrPhone.trim();
+  // Find member (case-insensitive for email, exact for phone)
   const user = await User.findOne({
-    $or: [{ email: emailOrPhone }, { phone: emailOrPhone }],
+    $or: [
+      { email: { $regex: new RegExp(`^${cleanInput}$`, "i") } }, 
+      { phone: cleanInput }
+    ],
   });
 
   if (!user) {
     throw new Error("No registered member found with this Email or Phone.");
+  }
+
+  // Check duplicate transaction ID (excluding the current user)
+  const duplicateTxn = await User.findOne({ 
+    paymentReferenceId: transactionId,
+    _id: { $ne: user._id }
+  });
+  if (duplicateTxn) {
+    throw new Error("This Transaction ID has already been submitted by another user.");
   }
 
   user.paymentReferenceId = transactionId;

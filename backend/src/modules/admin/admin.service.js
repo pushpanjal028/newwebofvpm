@@ -112,13 +112,13 @@ export const getAuditLogsService = async ({ page, limit }) => {
   };
 };
 
-export const updateMemberDetailsService = async (adminUser, id, { name, phone, organization, state, city, designation, photo, documentProof }) => {
+export const updateMemberDetailsService = async (adminUser, id, { name, phone, organization, state, city, designation, photo, documentProof, documentProofBack }) => {
   const user = await User.findById(id);
   if (!user) {
-    throw new Error("User not found");
+    throw new Error("User not found.");
   }
 
-  const oldValue = {
+  const oldData = {
     name: user.name,
     phone: user.phone,
     organization: user.organization,
@@ -127,16 +127,18 @@ export const updateMemberDetailsService = async (adminUser, id, { name, phone, o
     designation: user.designation,
     photo: user.photo,
     documentProof: user.documentProof,
+    documentProofBack: user.documentProofBack,
   };
 
-  user.name = name || user.name;
-  user.phone = phone || user.phone;
-  user.organization = organization !== undefined ? organization : user.organization;
-  user.state = state || user.state;
-  user.city = city || user.city;
-  user.designation = designation || user.designation;
-  if (photo) user.photo = photo;
-  if (documentProof) user.documentProof = documentProof;
+  if (name !== undefined) user.name = name;
+  if (phone !== undefined) user.phone = phone;
+  if (organization !== undefined) user.organization = organization;
+  if (state !== undefined) user.state = state;
+  if (city !== undefined) user.city = city;
+  if (designation !== undefined) user.designation = designation;
+  if (photo !== undefined) user.photo = photo;
+  if (documentProof !== undefined) user.documentProof = documentProof;
+  if (documentProofBack !== undefined) user.documentProofBack = documentProofBack;
 
   const newValue = {
     name: user.name,
@@ -155,30 +157,44 @@ export const updateMemberDetailsService = async (adminUser, id, { name, phone, o
   if (user.approvalStatus === "approved" && user.membershipId && user.issueDate && user.expiryDate) {
     try {
       let memberCard = await MemberCard.findOne({ userId: user._id });
-      if (memberCard) {
-        const pdfBuffer = await generateCardPDF({
-          membershipId: user.membershipId,
-          name: user.name,
-          designation: user.designation,
-          organization: user.organization,
-          city: user.city,
-          state: user.state,
-          phone: user.phone,
-          photoUrl: user.photo ? (user.photo.startsWith('http') ? user.photo : `${process.env.API_URL || 'http://localhost:5000'}/api/uploads/view/${user.photo}`) : null,
-          localPhotoPath: user.photo,
-          validFromStr: user.issueDate.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" }),
-          validUntilStr: user.expiryDate.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" }),
-        });
-        
-        if (process.env.AWS_BUCKET_NAME) {
-          await uploadBufferToS3(memberCard.pdfUrl, pdfBuffer, "application/pdf");
-        } else {
-          const localPath = path.join(__dirname, "../../../uploads", path.basename(memberCard.pdfUrl));
-          fs.writeFileSync(localPath, pdfBuffer);
-        }
+      
+      const pdfBuffer = await generateCardPDF({
+        membershipId: user.membershipId,
+        name: user.name,
+        designation: user.designation,
+        organization: user.organization,
+        city: user.city,
+        state: user.state,
+        phone: user.phone,
+        photoUrl: user.photo ? (user.photo.startsWith('http') ? user.photo : `${process.env.API_URL || 'http://localhost:5000'}/api/uploads/view/${user.photo}`) : null,
+        localPhotoPath: user.photo,
+        validFromStr: user.issueDate.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" }),
+        validUntilStr: user.expiryDate.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" }),
+      });
+      
+      let pdfUrl = `uploads/member_card_${user.membershipId}_${Date.now()}.pdf`;
+      
+      if (process.env.AWS_BUCKET_NAME) {
+        await uploadBufferToS3(pdfUrl, pdfBuffer, "application/pdf");
+      } else {
+        const localPath = path.join(__dirname, "../../../uploads", path.basename(pdfUrl));
+        fs.writeFileSync(localPath, pdfBuffer);
       }
+
+      if (!memberCard) {
+        memberCard = new MemberCard({
+          userId: user._id,
+          cardNumber: user.membershipId,
+          validFrom: user.issueDate,
+          validUntil: user.expiryDate,
+          pdfUrl: pdfUrl,
+        });
+      } else {
+        memberCard.pdfUrl = pdfUrl;
+      }
+      await memberCard.save();
     } catch (cardErr) {
-      console.error("❌ Failed to regenerate I-Card during profile update:", cardErr);
+      console.error("❌ Failed to generate/regenerate I-Card during profile update:", cardErr);
     }
   }
 
@@ -399,7 +415,7 @@ export const verifyMembershipService = async (adminUser, id, { status, rejection
       let sequence = 1001;
       // Find the last membershipId in the DB
       const lastUser = await User.findOne({
-        membershipId: { $regex: /^VPMH-\d{4}-\d+$/ },
+        membershipId: { $regex: /^vpmh-\d{4}-\d+$/i },
       }).sort({ membershipId: -1 });
 
       if (lastUser && lastUser.membershipId) {
@@ -411,7 +427,7 @@ export const verifyMembershipService = async (adminUser, id, { status, rejection
       }
 
       const year = new Date().getFullYear();
-      user.membershipId = `VPMH-${year}-${sequence}`;
+      user.membershipId = `vpmh-${year}-${sequence}`;
     }
 
     // Set issue and expiry dates (e.g. valid for 1 year)

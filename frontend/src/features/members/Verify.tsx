@@ -132,7 +132,7 @@ export default function Verify() {
                 </>
               )}
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider font-mono">
-                Registry ID: {member.membershipId}
+                Registry ID: {member.membershipId?.toLowerCase()}
               </p>
             </div>
 

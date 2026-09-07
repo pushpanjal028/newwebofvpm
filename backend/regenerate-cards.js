@@ -27,10 +27,9 @@ async function run() {
     for (const user of approvedUsers) {
       if (!user.membershipId) continue;
 
-      const existingCard = await MemberCard.findOne({ userId: user._id });
+      let existingCard = await MemberCard.findOne({ userId: user._id });
       if (existingCard) {
-        console.log(`User ${user.name} (${user.membershipId}) already has a card.`);
-        continue;
+        console.log(`User ${user.name} (${user.membershipId}) already has a card, overwriting PDF...`);
       }
 
       console.log(`Generating card for ${user.name} (${user.membershipId})...`);
@@ -62,15 +61,18 @@ async function run() {
           fs.writeFileSync(localPath, pdfBuffer);
         }
 
-        const memberCard = new MemberCard({
-          userId: user._id,
-          cardNumber: user.membershipId,
-          validFrom: user.issueDate || new Date(),
-          validUntil: user.expiryDate || new Date(Date.now() + 31536000000),
-          pdfUrl: pdfUrl,
-        });
+        if (!existingCard) {
+          existingCard = new MemberCard({
+            userId: user._id,
+            cardNumber: user.membershipId,
+            validFrom: user.issueDate || new Date(),
+            validUntil: user.expiryDate || new Date(Date.now() + 31536000000),
+          });
+        }
+        
+        existingCard.pdfUrl = pdfUrl;
+        await existingCard.save();
 
-        await memberCard.save();
         console.log(`✅ Success for ${user.name}`);
       } catch (err) {
         console.error(`❌ Failed for ${user.name}:`, err.message);

@@ -10,7 +10,7 @@ import transporter from "../../config/mailer.js";
 import MemberCard from "../../models/MemberCard.js";
 
 export const sendOtpService = async (email) => {
-  const existing = await User.findOne({ email });
+  const existing = await User.findOne({ email: { $regex: new RegExp(`^${email}$`, "i") } });
   if (existing) {
     throw new Error("A member is already registered with this email.");
   }

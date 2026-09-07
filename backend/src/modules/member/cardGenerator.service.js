@@ -20,8 +20,27 @@ const getBase64Image = (filePath) => {
 };
 
 import { generatePresignedGetUrl } from '../../utils/s3.js';
+import translate from 'google-translate-api-x';
+
+const translateToHindi = async (text) => {
+  if (!text) return '';
+  try {
+    const res = await translate(text, { to: 'hi' });
+    return res.text;
+  } catch (err) {
+    console.error("Translation error for text:", text, err);
+    return text; // Fallback to original text if translation fails
+  }
+};
 
 export const generateCardPDF = async (memberData) => {
+  // Translate fields to Hindi
+  const nameHi = await translateToHindi(memberData.name);
+  const designationHi = await translateToHindi(memberData.designation);
+  const cityHi = await translateToHindi(memberData.city);
+  const stateHi = await translateToHindi(memberData.state);
+  
+  const addressHi = [cityHi, stateHi].filter(Boolean).join(', ');
   // Load Logo
   const logoPath = path.join(__dirname, '../../../../frontend/src/assets/logo perfect.png');
   const logoBase64 = getBase64Image(logoPath);
@@ -45,6 +64,16 @@ export const generateCardPDF = async (memberData) => {
       const photoPath = path.join(__dirname, '../../../../backend/uploads', cleanPath);
       console.log("Looking for photo at:", photoPath);
       photoBase64 = getBase64Image(photoPath);
+    }
+  } else if (memberData.localPhotoPath && memberData.localPhotoPath.startsWith('http')) {
+    try {
+      const response = await fetch(memberData.localPhotoPath);
+      const arrayBuffer = await response.arrayBuffer();
+      // Try to determine extension from content-type or URL
+      const contentType = response.headers.get('content-type') || 'image/png';
+      photoBase64 = `data:${contentType};base64,${Buffer.from(arrayBuffer).toString('base64')}`;
+    } catch (e) {
+      console.error("Error fetching photo from HTTP URL:", e);
     }
   } else if (memberData.photoUrl && memberData.photoUrl.startsWith('data:')) {
     photoBase64 = memberData.photoUrl;
@@ -77,14 +106,14 @@ export const generateCardPDF = async (memberData) => {
           align-items: center;
           background: #fff;
           width: 550px;
-          height: 850px;
+          height: 900px; /* Increased from 850px to prevent cutoff */
         }
         
         .card-wrapper {
           background-color: white;
           border: 1px solid #000;
           width: 530px;
-          height: 800px;
+          height: 880px; /* Increased from 800px to give more room */
           position: relative;
           overflow: hidden;
           margin: auto;
@@ -127,7 +156,7 @@ export const generateCardPDF = async (memberData) => {
         /* Header Content */
         .header-content {
           text-align: center;
-          padding-top: 30px; /* Increased to push header down below R.No */
+          padding-top: 20px; /* Reduced padding */
           padding-left: 100px; /* Shift entire block right to clear corner */
           padding-right: 20px;
           position: relative;
@@ -147,7 +176,7 @@ export const generateCardPDF = async (memberData) => {
         }
 
         .main-title {
-          font-size: 34px; /* Slightly larger to match reference */
+          font-size: 30px; /* Reduced from 34px */
           font-weight: bold;
           color: #d12222;
           margin: 0;
@@ -155,7 +184,7 @@ export const generateCardPDF = async (memberData) => {
         }
 
         .sub-title {
-          font-size: 14px;
+          font-size: 12px; /* Reduced from 14px */
           font-weight: bold;
           color: #0d226a; /* Darker Blue */
           margin: -2px 0 0 0; /* Pass pass me kro */
@@ -164,7 +193,7 @@ export const generateCardPDF = async (memberData) => {
         }
 
         .tertiary-title {
-          font-size: 21px;
+          font-size: 18px; /* Reduced from 21px */
           font-weight: bold;
           color: #d12222;
           margin: 2px 0 0 0; /* Pass pass me kro */
@@ -196,11 +225,11 @@ export const generateCardPDF = async (memberData) => {
           position: relative;
           z-index: 10;
           display: flex;
-          margin-top: 50px;
+          margin-top: 50px; /* Restored to prevent photo overlapping curve */
           padding: 0 40px;
-          gap: 25px;
+          gap: 20px; /* Reduced gap */
           align-items: flex-start;
-          min-height: 160px;
+          min-height: 140px;
         }
 
         .watermark {
@@ -208,15 +237,15 @@ export const generateCardPDF = async (memberData) => {
           top: 40px;
           left: 50%;
           transform: translateX(-50%);
-          width: 320px;
+          width: 300px;
           height: auto;
           opacity: 0.12;
           z-index: -1;
         }
 
         .photo-box {
-          width: 100px;
-          height: 125px;
+          width: 95px; /* Reduced from 100px */
+          height: 120px; /* Reduced from 125px */
           border: 1px solid #d12222;
           background: #fff;
           display: flex;
@@ -233,7 +262,7 @@ export const generateCardPDF = async (memberData) => {
         }
 
         .photo-unavailable {
-          font-size: 13px;
+          font-size: 12px;
           color: #666;
           font-weight: bold;
         }
@@ -245,12 +274,12 @@ export const generateCardPDF = async (memberData) => {
         
         .info-row {
           display: flex;
-          margin-bottom: 12px;
-          font-size: 15px;
+          margin-bottom: 7px; /* Reduced from 9px */
+          font-size: 14px; /* Reduced from 15px */
         }
         
         .info-label {
-          width: 95px;
+          width: 85px; /* Reduced from 95px */
           color: #d12222;
           font-weight: bold;
           font-family: 'Tiro Devanagari Hindi', serif;
@@ -272,7 +301,7 @@ export const generateCardPDF = async (memberData) => {
 
         /* Signatures */
         .signatures-wrapper {
-          margin-top: 15px;
+          margin-top: 10px; /* Reduced from 15px */
           padding: 0 60px; /* Brings the image inward, pulling signatures closer together */
           position: relative;
           z-index: 10;
@@ -305,7 +334,7 @@ export const generateCardPDF = async (memberData) => {
 
         .hr-line {
           border-top: 2px solid #000;
-          margin: 15px 30px;
+          margin: 10px 30px; /* Reduced from 15px */
           position: relative;
           z-index: 10;
         }
@@ -314,11 +343,11 @@ export const generateCardPDF = async (memberData) => {
         .registration-text {
           text-align: center;
           font-family: 'Tiro Devanagari Hindi', serif;
-          font-size: 15px;
+          font-size: 14px; /* Reduced from 15px */
           color: #1e3a8a;
           font-weight: bold;
-          margin: 10px 20px;
-          line-height: 1.6;
+          margin: 6px 20px; /* Reduced from 10px */
+          line-height: 1.5;
           position: relative;
           z-index: 10;
         }
@@ -330,7 +359,7 @@ export const generateCardPDF = async (memberData) => {
         /* Validity Badge */
         .validity-container {
           text-align: center;
-          margin: 15px 0;
+          margin: 10px 0; /* Reduced from 15px */
           position: relative;
           z-index: 10;
         }
@@ -342,7 +371,7 @@ export const generateCardPDF = async (memberData) => {
           padding: 4px 25px;
           color: #d12222;
           font-weight: bold;
-          font-size: 14px;
+          font-size: 13px; /* Reduced from 14px */
           background: #fff;
         }
 
@@ -365,9 +394,9 @@ export const generateCardPDF = async (memberData) => {
         
         .terms-list {
           font-family: 'Tiro Devanagari Hindi', serif;
-          font-size: 12px;
+          font-size: 11px; /* Reduced from 12px */
           color: #000;
-          line-height: 1.6;
+          line-height: 1.4; /* Reduced from 1.6 */
           font-weight: 500;
         }
         
@@ -377,13 +406,13 @@ export const generateCardPDF = async (memberData) => {
         }
         
         .terms-list li {
-          margin-bottom: 6px;
+          margin-bottom: 3px; /* Reduced from 6px */
         }
 
         /* Footer Contacts */
         .footer-hr {
           border-top: 1px solid #d1d5db;
-          margin: 15px 30px 10px 30px;
+          margin: 10px 30px 5px 30px; /* Reduced from 15px */
           position: relative;
           z-index: 10;
         }
@@ -414,7 +443,7 @@ export const generateCardPDF = async (memberData) => {
     <body>
       <div class="card-wrapper">
         <div class="press-corner">
-          <span class="press-text">PRESS</span>
+          <span class="press-text">press</span>
         </div>
         
         <div class="r-no">R.No.: 547/06T</div>
@@ -446,27 +475,27 @@ export const generateCardPDF = async (memberData) => {
             <div class="info-row">
               <div class="info-label">आई कार्ड संख्या</div>
               <div class="info-colon">:</div>
-              <div class="info-value">${memberData.membershipId || ''}</div>
+              <div class="info-value">${(memberData.membershipId || '').toLowerCase()}</div>
             </div>
             <div class="info-row">
               <div class="info-label">नाम</div>
               <div class="info-colon">:</div>
-              <div class="info-value">${memberData.name || ''}</div>
+              <div class="info-value">${nameHi}</div>
             </div>
             <div class="info-row">
               <div class="info-label">पद</div>
               <div class="info-colon">:</div>
-              <div class="info-value">${memberData.designation || ''}</div>
+              <div class="info-value">${designationHi}</div>
             </div>
             <div class="info-row">
               <div class="info-label">कार्यक्षेत्र</div>
               <div class="info-colon">:</div>
-              <div class="info-value">${memberData.city || ''}${memberData.state ? ', ' + memberData.state : ''}</div>
+              <div class="info-value">${addressHi}</div>
             </div>
             <div class="info-row">
               <div class="info-label">पता</div>
               <div class="info-colon">:</div>
-              <div class="info-value">${memberData.city || ''}${memberData.state ? ', ' + memberData.state : ''}</div>
+              <div class="info-value">${addressHi}</div>
             </div>
             <div class="info-row">
               <div class="info-label">मो. नं</div>
@@ -513,9 +542,9 @@ export const generateCardPDF = async (memberData) => {
         <div class="footer-hr"></div>
         <div class="footer-contacts">
           <div class="contact-item"><span class="icon-red">📞</span> 6393287185</div>
-          <div class="contact-item"><span class="icon-lb">💬</span> @Vmahasangh</div>
-          <div class="contact-item"><span class="icon-blue">🟦</span> Vishwapatrakarmahasangh</div>
-          <div class="contact-item"><span class="icon-blue">▶️</span> Vishwapatrakarmahasangh</div>
+          <div class="contact-item"><span class="icon-lb">💬</span> @vmahasangh</div>
+          <div class="contact-item"><span class="icon-blue">🟦</span> vishwapatrakarmahasangh</div>
+          <div class="contact-item"><span class="icon-blue">▶️</span> vishwapatrakarmahasangh</div>
         </div>
         
       </div>
@@ -535,7 +564,7 @@ export const generateCardPDF = async (memberData) => {
 
     const pdfBuffer = await page.pdf({
       width: '550px',
-      height: '850px',
+      height: '900px',
       printBackground: true,
       margin: { top: '0px', bottom: '0px', left: '0px', right: '0px' }
     });

@@ -30,8 +30,12 @@ export const verifyMembershipIdService = async (membershipId) => {
 };
 
 export const getMemberStatusService = async (emailOrPhone) => {
+  const cleanInput = emailOrPhone.trim();
   const user = await User.findOne({
-    $or: [{ email: emailOrPhone }, { phone: emailOrPhone }],
+    $or: [
+      { email: { $regex: new RegExp(`^${cleanInput}$`, "i") } }, 
+      { phone: cleanInput }
+    ],
   }).select("name photo organization state city designation paymentStatus approvalStatus membershipId issueDate expiryDate");
 
   if (!user) {

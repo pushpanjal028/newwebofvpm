@@ -458,15 +458,22 @@ export default function UserDashboard() {
                             <span className="bg-green-50 border border-green-200 text-green-700 font-bold px-2.5 py-0.5 rounded-full text-[9px] uppercase">Verified Paid</span>
                           ) : profile.paymentStatus === "verification_pending" ? (
                             <span className="bg-amber-50 border border-amber-200 text-amber-700 font-bold px-2.5 py-0.5 rounded-full text-[9px] uppercase animate-pulse">Verifying</span>
+                          ) : profile.paymentStatus === "rejected" ? (
+                            <span className="bg-red-50 border border-red-200 text-red-750 font-bold px-2.5 py-0.5 rounded-full text-[9px] uppercase">Rejected</span>
                           ) : (
                             <span className="bg-slate-100 border text-slate-600 font-bold px-2.5 py-0.5 rounded-full text-[9px] uppercase">Pending</span>
                           )}
                         </div>
-                        {profile.paymentStatus === "pending" && (
+                        {(profile.paymentStatus === "pending" || profile.paymentStatus === "rejected") && (
                           <div className="pt-2">
+                            {profile.paymentStatus === "rejected" && profile.paymentRejectionReason && (
+                              <div className="mb-2 p-2 bg-red-50 border border-red-100 rounded text-[10px] text-red-700">
+                                <strong>Reason:</strong> {profile.paymentRejectionReason}
+                              </div>
+                            )}
                             <p className="text-[10px] text-slate-500 leading-relaxed">Please submit your UPI transaction reference to activate reviews.</p>
                             <Link to="/payment" className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 hover:text-amber-700 mt-1.5">
-                              Submit Fee details →
+                              {profile.paymentStatus === "rejected" ? "Re-upload Fee details →" : "Submit Fee details →"}
                             </Link>
                           </div>
                         )}
