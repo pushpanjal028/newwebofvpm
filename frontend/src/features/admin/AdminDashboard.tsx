@@ -282,6 +282,7 @@ export default function AdminDashboard() {
   const [editPhotoLoading, setEditPhotoLoading] = useState(false);
   const [editDocLoading, setEditDocLoading] = useState(false);
   const [editDocBackLoading, setEditDocBackLoading] = useState(false);
+  const [editPaymentLoading, setEditPaymentLoading] = useState(false);
 
   const handleEditPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -330,6 +331,23 @@ export default function AdminDashboard() {
         setError(err.message || "Failed to upload aadhar back");
       } finally {
         setEditDocBackLoading(false);
+      }
+    }
+  };
+
+  const handleEditPaymentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setEditPaymentLoading(true);
+      try {
+        const presigned = await getPresignedUploadUrl(file.name, file.type, undefined, `admin_edit_pay_${Date.now()}`);
+        await uploadFileToS3(presigned.uploadUrl, file);
+        setEditFormData({ ...editFormData, paymentScreenshot: presigned.key });
+        setSuccess("Payment receipt uploaded and staged for save.");
+      } catch (err: any) {
+        setError(err.message || "Failed to upload payment receipt");
+      } finally {
+        setEditPaymentLoading(false);
       }
     }
   };
@@ -536,17 +554,20 @@ export default function AdminDashboard() {
   const openEditModal = (member: any) => {
     setEditingMember(member);
     setEditFormData({
-      name: member.name,
+      name: member.name || "",
       phone: member.phone || "",
+      designation: member.designation || "",
       organization: member.organization || "",
       state: member.state || "",
       city: member.city || "",
-      designation: member.designation || "",
       photo: member.photo || "",
       documentProof: member.documentProof || "",
       documentProofBack: member.documentProofBack || "",
+      paymentReferenceId: member.paymentReferenceId || "",
+      paymentScreenshot: member.paymentScreenshot || "",
     });
-  };
+    setError("");
+    setSuccess("");};
 
   const handleUpdateCashback = async (id: string, status: string) => {
     if (!window.confirm(`Are you sure you want to change cashback status to ${status}?`)) return;
@@ -1752,7 +1773,7 @@ export default function AdminDashboard() {
             >
               <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-blue-500 to-indigo-500" />
               
-              <div className="p-6 border-b flex justify-between items-center">
+              <div className="p-6 border-b flex justify-between items-center bg-white z-10 relative">
                 <h3 className="text-lg font-black text-slate-900">Edit Member Details</h3>
                 <button
                   onClick={() => setEditingMember(null)}
@@ -1762,7 +1783,7 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
-              <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
+              <form onSubmit={handleEditSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
                 <div className="space-y-1">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Name</label>
                   <input
@@ -1883,6 +1904,40 @@ export default function AdminDashboard() {
                         {editDocBackLoading ? <Loader2 className="h-3 w-3 animate-spin text-slate-500" /> : <Upload className="h-3 w-3 text-slate-500" />}
                         <span className="text-slate-600 font-medium">{editDocBackLoading ? "Uploading..." : "Upload New Doc"}</span>
                         <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleEditDocBackUpload} disabled={editDocBackLoading} />
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Payment Info Edit Section */}
+                  <div className="pt-4 border-t space-y-4 col-span-2">
+                    <h4 className="text-xs font-black uppercase text-slate-500 tracking-wider">Payment / Fee Details</h4>
+                    
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5">Transaction ID / Reference Number</label>
+                      <input
+                        type="text"
+                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all"
+                        placeholder="e.g. UPI Ref No"
+                        value={editFormData.paymentReferenceId || ""}
+                        onChange={(e) => setEditFormData({ ...editFormData, paymentReferenceId: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-700">Payment Screenshot</label>
+                      {editFormData.paymentScreenshot && (
+                        <div className="flex items-center gap-2 p-2 bg-amber-50/50 border border-amber-100 rounded-xl mb-2">
+                          <Check className="h-4 w-4 text-amber-600" />
+                          <span className="text-xs font-bold text-amber-800">Screenshot Uploaded</span>
+                          <button type="button" onClick={() => handleViewSecureDocument(editFormData.paymentScreenshot)} className="ml-auto text-blue-500 hover:text-blue-700">
+                            <Eye className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                      <label className={`flex items-center justify-center gap-2 px-3 py-2 border border-dashed rounded-xl text-xs cursor-pointer transition-colors ${editPaymentLoading ? 'bg-slate-100 border-slate-300' : 'bg-slate-50 hover:bg-slate-100 border-slate-300'}`}>
+                        {editPaymentLoading ? <Loader2 className="h-3 w-3 animate-spin text-slate-500" /> : <Upload className="h-3 w-3 text-slate-500" />}
+                        <span className="text-slate-600 font-medium">{editPaymentLoading ? "Uploading..." : "Upload Payment Screenshot"}</span>
+                        <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleEditPaymentUpload} disabled={editPaymentLoading} />
                       </label>
                     </div>
                   </div>

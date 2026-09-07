@@ -25,7 +25,7 @@ import translate from 'google-translate-api-x';
 const translateToHindi = async (text) => {
   if (!text) return '';
   try {
-    const res = await translate(text, { to: 'hi' });
+    const res = await translate(text, { from: 'en', to: 'hi' });
     return res.text;
   } catch (err) {
     console.error("Translation error for text:", text, err);
@@ -443,10 +443,10 @@ export const generateCardPDF = async (memberData) => {
     <body>
       <div class="card-wrapper">
         <div class="press-corner">
-          <span class="press-text">press</span>
+          <span class="press-text">प्रेस</span>
         </div>
         
-        <div class="r-no">R.No.: 547/06T</div>
+        <div class="r-no">पंजीकरण संख्या: 547/06T</div>
         
         <div class="header-content">
           <div class="header-top-row">
@@ -455,8 +455,8 @@ export const generateCardPDF = async (memberData) => {
           </div>
           <p class="sub-title">(पत्रकारों का वैश्विक पंजीकृत संगठन) का उपक्रम</p>
           <h2 class="tertiary-title">वरिष्ठ नागरिक अधिकार मंच</h2>
-          <p class="contact-info">E-mail: info.vpm2006@gmail.com | WebSite: vpmh.org</p>
-          <p class="contact-info">Office No.: 7084250799, 6393287185</p>
+          <p class="contact-info">ई-मेल: info.vpm2006@gmail.com | वेबसाइट: vpmh.org</p>
+          <p class="contact-info">कार्यालय नंबर: 7084250799, 6393287185</p>
         </div>
         
         <div class="bg-curve-top"></div>
@@ -467,7 +467,7 @@ export const generateCardPDF = async (memberData) => {
           <div class="photo-box">
             ${photoBase64
       ? `<img src="${photoBase64}" alt="Photo" />`
-      : `<div class="photo-unavailable">Photo<br/>unavailable</div>`
+      : `<div class="photo-unavailable">फोटो<br/>उपलब्ध नहीं</div>`
     }
           </div>
           
@@ -524,12 +524,12 @@ export const generateCardPDF = async (memberData) => {
         
         <div class="validity-container">
           <div class="validity-badge">
-            card valid from ${memberData.validFromStr || '01/01/2026'} to ${memberData.validUntilStr || '31/12/2026'}
+            कार्ड वैधता ${memberData.validFromStr || '01/01/2026'} से ${memberData.validUntilStr || '31/12/2026'} तक
           </div>
         </div>
         
         <div class="terms-section">
-          <div class="terms-title">Term & Condition</div>
+          <div class="terms-title">नियम एवं शर्तें</div>
           <div class="terms-list">
             <ol>
               <li>यदि विश्व पत्रकार महासंघ के सदस्य एवं पदाधिकारी हेतु राष्ट्र/समाज व विश्वपत्रकार महासंघ के संविधान के विपरीत एवं अन्य असंवैधानिक कार्यों में लिप्त पाए जाते हैं तो उनकी सदस्यता एवं पद तत्काल स्वतः समाप्त मानी जायेगी। और विश्व पत्रकार महासंघ उचित कार्य करने के लिए अधिकृत मान्य होगा।</li>
