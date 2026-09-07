@@ -216,7 +216,7 @@ export const updateMemberDetailsService = async (adminUser, id, { name, phone, o
     }
   }
 
-  await logAdminAction(adminUser, "MEMBER_EDITED", user._id, { field: "profile" }, oldValue, newValue);
+  await logAdminAction(adminUser, "MEMBER_EDITED", user._id, { field: "profile" }, oldData, newValue);
 
   return { message: "Member details updated successfully", user };
 };
