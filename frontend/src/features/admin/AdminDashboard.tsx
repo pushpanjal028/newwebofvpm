@@ -340,7 +340,7 @@ export default function AdminDashboard() {
       const file = e.target.files[0];
       setEditPaymentLoading(true);
       try {
-        const presigned = await getPresignedUploadUrl(file.name, file.type, undefined, `admin_edit_pay_${Date.now()}`);
+        const presigned = await getPresignedUploadUrl(file.name, file.type);
         await uploadFileToS3(presigned.uploadUrl, file);
         setEditFormData({ ...editFormData, paymentScreenshot: presigned.key });
         setSuccess("Payment receipt uploaded and staged for save.");
@@ -515,7 +515,7 @@ export default function AdminDashboard() {
     
     try {
       // 1. Upload the image
-      const presigned = await getPresignedUploadUrl(adminManualReceiptFile.name, adminManualReceiptFile.type, undefined, `manual_${Date.now()}`);
+      const presigned = await getPresignedUploadUrl(adminManualReceiptFile.name, adminManualReceiptFile.type);
       await uploadFileToS3(presigned.uploadUrl, adminManualReceiptFile);
       
       // 2. Update the member details
