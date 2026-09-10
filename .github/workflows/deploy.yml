@@ -1,0 +1,49 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main # Change this to your main branch if it's named 'master'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          # Use ONE of the two authentication methods below:
+          key: ${{ secrets.EC2_SSH_KEY }}
+          # password: ${{ secrets.EC2_PASSWORD }}
+          script: |
+            # Navigate to your project directory (replace with your actual project path on EC2)
+            cd /home/ubuntu/newwebofvpm
+            
+            # Discard any local changes (like package-lock.json) to avoid merge conflicts
+            git fetch --all
+            git reset --hard origin/main
+            git pull origin main
+            
+            # ----------------------------------------------------
+            # BACKEND SETUP
+            # ----------------------------------------------------
+            cd backend
+            npm install
+            
+            # Restart the PM2 process (using the name 'backend' from your screenshot)
+            # If the app doesn't exist yet, this will fail and then it will start it.
+            pm2 restart backend || pm2 start src/server.js --name backend
+            
+            # ----------------------------------------------------
+            # FRONTEND SETUP
+            # ----------------------------------------------------
+            cd ../frontend
+            npm install
+            npm run build
+            
+            # Note: The newly built files in 'dist' will be automatically served by Nginx.
+            # We restart Nginx here to clear any cache and ensure it serves the fresh build.
+            sudo systemctl restart nginx
