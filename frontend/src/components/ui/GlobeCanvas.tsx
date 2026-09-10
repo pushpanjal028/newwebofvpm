@@ -32,7 +32,7 @@ export default function GlobeCanvas() {
     const globeRadius = Math.min(width, height) * 0.4;
     const perspective = 800;
     let rotationY = 0;
-    let rotationX = 0.2; // slight tilt
+    const rotationX = 0.2; // slight tilt
 
     // Generate points on a sphere (Fibonacci lattice)
     const pointsCount = 180;
@@ -61,12 +61,12 @@ export default function GlobeCanvas() {
       // Project and collect points with depth info
       const projectedPoints = points.map((p) => {
         // Rotate Y
-        let x1 = p.x * Math.cos(rotationY) - p.z * Math.sin(rotationY);
-        let z1 = p.x * Math.sin(rotationY) + p.z * Math.cos(rotationY);
+        const x1 = p.x * Math.cos(rotationY) - p.z * Math.sin(rotationY);
+        const z1 = p.x * Math.sin(rotationY) + p.z * Math.cos(rotationY);
         
         // Rotate X (tilt)
-        let y2 = p.y * Math.cos(rotationX) - z1 * Math.sin(rotationX);
-        let z2 = p.y * Math.sin(rotationX) + z1 * Math.cos(rotationX);
+        const y2 = p.y * Math.cos(rotationX) - z1 * Math.sin(rotationX);
+        const z2 = p.y * Math.sin(rotationX) + z1 * Math.cos(rotationX);
 
         const scale = perspective / (perspective + z2 * globeRadius);
         const projX = centerX + x1 * globeRadius * scale;
@@ -100,10 +100,10 @@ export default function GlobeCanvas() {
           const z = Math.sin(angle) * ringRadius;
 
           // Rotate ring point around tilt axis
-          let x1 = x * Math.cos(rotationY) - z * Math.sin(rotationY);
-          let z1 = x * Math.sin(rotationY) + z * Math.cos(rotationY);
-          let y2 = ringY * Math.cos(rotationX) - z1 * Math.sin(rotationX);
-          let z2 = ringY * Math.sin(rotationX) + z1 * Math.cos(rotationX);
+          const x1 = x * Math.cos(rotationY) - z * Math.sin(rotationY);
+          const z1 = x * Math.sin(rotationY) + z * Math.cos(rotationY);
+          const y2 = ringY * Math.cos(rotationX) - z1 * Math.sin(rotationX);
+          const z2 = ringY * Math.sin(rotationX) + z1 * Math.cos(rotationX);
 
           const scale = perspective / (perspective + z2);
           const px = centerX + x1 * scale;

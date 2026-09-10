@@ -18,20 +18,20 @@ interface GalleryItem {
   category?: string;
 }
 
+const defaultImages: GalleryItem[] = [
+  { url: img1, title: 'A memorandum was given to the District Magistrate of Prayagraj by the Vishwapatrakar Mahasangh.', category: 'Assemblies' },
+  { url: img2, title: 'A memorandum was given to the District Magistrate of Prayagraj by the Vishwapatrakar Mahasangh.', category: 'Assemblies' },
+  { url: img3, title: 'Press Freedom Rally', category: 'Assemblies' },
+  { url: img4, title: 'Member Networking Event in Himachal pradesh', category: 'Events' },
+  { url: img5, title: 'Awards Ceremony in Madhyapradesh', category: 'Awards' },
+  { url: img6, title: 'Training Session in Himachal pradesh', category: 'Training' },
+];
+
 export default function Gallery() {
   const [selectedImg, setSelectedImg] = useState<{ url: string; title: string } | null>(null);
   const [dbPhotos, setDbPhotos] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("All");
-
-  const defaultImages: GalleryItem[] = [
-    { url: img1, title: 'A memorandum was given to the District Magistrate of Prayagraj by the Vishwapatrakar Mahasangh.', category: 'Assemblies' },
-    { url: img2, title: 'A memorandum was given to the District Magistrate of Prayagraj by the Vishwapatrakar Mahasangh.', category: 'Assemblies' },
-    { url: img3, title: 'Press Freedom Rally', category: 'Assemblies' },
-    { url: img4, title: 'Member Networking Event in Himachal pradesh', category: 'Events' },
-    { url: img5, title: 'Awards Ceremony in Madhyapradesh', category: 'Awards' },
-    { url: img6, title: 'Training Session in Himachal pradesh', category: 'Training' },
-  ];
 
   useEffect(() => {
     const fetchPhotos = async () => {
@@ -39,7 +39,7 @@ export default function Gallery() {
       try {
         const data = await getPublicGalleryPhotos();
         if (data && data.length > 0) {
-          const mapped = data.map((item: any) => ({
+          const mapped = data.map((item: Record<string, unknown>) => ({
             _id: item._id,
             url: getUploadUrl(item.imageUrl),
             title: item.title,

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Users, CheckCircle2, XCircle, Clock, Search, LogOut,
   SlidersHorizontal, Edit3, Trash2, Check, X, ShieldAlert, Eye, FileText, ChevronLeft, ChevronRight,
-  Image as ImageIcon, Plus, Upload, Loader2, IndianRupee
+  Image as ImageIcon, Plus, Upload, Loader2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -12,19 +12,21 @@ import {
   getUploadUrl, clearAuth,
   getPublicGalleryPhotos, createGalleryPhoto, deleteGalleryPhoto,
   getPresignedUploadUrl, uploadFileToS3,
-  getAdminCashbacks, updateCashbackStatus, fetchSecureDocumentUrl,
+  getAdminCashbacks, fetchSecureDocumentUrl,
   resetMemberPassword, forceEmailVerification, updateAccountStatus,
-  getAdmins, createAdmin, updateAdminRole, deleteAdmin
+  getAdmins, createAdmin, updateAdminRole, deleteAdmin,
+  getAdminAnalytics, bulkPrintCards
 } from "../../api";
-
 import ProtectedImage from "../../components/common/ProtectedImage";
+import { CashbackManagement } from "./CashbackManagement";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
 
 
   // Authentication check
-  const [currentAdmin, setCurrentAdmin] = useState<any>(null);
+  const [currentAdmin, setCurrentAdmin] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("vpm_token");
@@ -44,8 +46,8 @@ export default function AdminDashboard() {
     }
   }, [navigate]);
 
-  // Tabs: "members", "logs", "gallery", "cashbacks", or "admins"
-  const [activeTab, setActiveTab] = useState<"members" | "logs" | "gallery" | "cashbacks" | "admins">("members");
+  // Tabs: "members", "logs", "gallery", "cashbacks", "admins", or "analytics"
+  const [activeTab, setActiveTab] = useState<"members" | "logs" | "gallery" | "cashbacks" | "admins" | "analytics">("analytics");
 
   // Stats
   const [stats, setStats] = useState({
@@ -57,10 +59,18 @@ export default function AdminDashboard() {
   });
 
   // Members list & Pagination
-  const [members, setMembers] = useState<any[]>([]);
+  const [members, setMembers] = useState<Record<string, unknown>[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalMembers, setTotalMembers] = useState(0);
+
+  // Bulk Selection
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [bulkPrintLoading, setBulkPrintLoading] = useState(false);
+
+  // Analytics
+  const [analytics, setAnalytics] = useState<Record<string, unknown> | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -68,16 +78,16 @@ export default function AdminDashboard() {
   const [approvalFilter, setApprovalFilter] = useState("");
 
   // Audit Logs & Pagination
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [auditLogs, setAuditLogs] = useState<Record<string, unknown>[]>([]);
   const [logPage, setLogPage] = useState(1);
   const [logTotalPages, setLogTotalPages] = useState(1);
 
   // Cashbacks
-  const [cashbacks, setCashbacks] = useState<any[]>([]);
-  const [cashbacksLoading, setCashbacksLoading] = useState(false);
+  const [, setCashbacks] = useState<Record<string, unknown>[]>([]);
+  const [, setCashbacksLoading] = useState(false);
 
   // Photo Gallery Management State
-  const [galleryPhotos, setGalleryPhotos] = useState<any[]>([]);
+  const [galleryPhotos, setGalleryPhotos] = useState<Record<string, unknown>[]>([]);
   const [galleryLoading, setGalleryLoading] = useState(false);
   const [galleryTitle, setGalleryTitle] = useState("");
   const [galleryCategory, setGalleryCategory] = useState("Events");
@@ -85,8 +95,8 @@ export default function AdminDashboard() {
   const [galleryUploadLoading, setGalleryUploadLoading] = useState(false);
 
   // Admin Management State
-  const [admins, setAdmins] = useState<any[]>([]);
-  const [adminLoading, setAdminLoading] = useState(false);
+  const [admins, setAdmins] = useState<Record<string, unknown>[]>([]);
+  const [, setAdminLoading] = useState(false);
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [newAdminName, setNewAdminName] = useState("");
   const [newAdminPassword, setNewAdminPassword] = useState("");
@@ -97,7 +107,7 @@ export default function AdminDashboard() {
     try {
       const data = await getAdmins();
       setAdmins(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching admins:", err);
     } finally {
       setAdminLoading(false);
@@ -116,7 +126,7 @@ export default function AdminDashboard() {
       setNewAdminName("");
       setNewAdminPassword("");
       fetchAdmins();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message || "Failed to create admin.");
     } finally {
       setActionLoading(false);
@@ -131,8 +141,12 @@ export default function AdminDashboard() {
       await updateAdminRole(id, role);
       setSuccess("Admin role updated.");
       fetchAdmins();
-    } catch (err: any) {
-      setError(err.message || "Failed to update admin role.");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || "An error occurred");
+      } else {
+        setError(String(err));
+      }
     } finally {
       setActionLoading(false);
     }
@@ -147,7 +161,7 @@ export default function AdminDashboard() {
       await deleteAdmin(id);
       setSuccess("Administrator removed.");
       fetchAdmins();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message || "Failed to remove admin.");
     } finally {
       setActionLoading(false);
@@ -159,7 +173,7 @@ export default function AdminDashboard() {
     try {
       const data = await getPublicGalleryPhotos();
       setGalleryPhotos(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching gallery photos:", err);
     } finally {
       setGalleryLoading(false);
@@ -171,7 +185,7 @@ export default function AdminDashboard() {
     try {
       const data = await getAdminCashbacks();
       setCashbacks(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching cashbacks:", err);
     } finally {
       setCashbacksLoading(false);
@@ -201,7 +215,7 @@ export default function AdminDashboard() {
       setGalleryTitle("");
       setGalleryFile(null);
       fetchGalleryPhotos();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message || "Failed to upload gallery photo.");
     } finally {
       setGalleryUploadLoading(false);
@@ -217,7 +231,7 @@ export default function AdminDashboard() {
       await deleteGalleryPhoto(id);
       setSuccess("Photo deleted from gallery successfully.");
       fetchGalleryPhotos();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message || "Failed to delete photo from gallery.");
     } finally {
       setActionLoading(false);
@@ -232,7 +246,7 @@ export default function AdminDashboard() {
   const [success, setSuccess] = useState("");
 
   // Detail Inspector Modal
-  const [inspectingMember, setInspectingMember] = useState<any | null>(null);
+  const [inspectingMember, setInspectingMember] = useState<Record<string, unknown> | null>(null);
   
   // Image/Document Viewer Modal
   const [viewingFileUrl, setViewingFileUrl] = useState<string | null>(null);
@@ -259,7 +273,7 @@ export default function AdminDashboard() {
     try {
       const url = await fetchSecureDocumentUrl(fileKey);
       setViewingFileUrl(url);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setPreviewError(err.message || "Unable to load document.");
     } finally {
       setPreviewLoading(false);
@@ -267,7 +281,7 @@ export default function AdminDashboard() {
   };
 
   // Edit Modal
-  const [editingMember, setEditingMember] = useState<any | null>(null);
+  const [editingMember, setEditingMember] = useState<Record<string, unknown> | null>(null);
   const [editFormData, setEditFormData] = useState({
     name: "",
     phone: "",
@@ -293,7 +307,7 @@ export default function AdminDashboard() {
         await uploadFileToS3(presigned.uploadUrl, file);
         setEditFormData({ ...editFormData, photo: presigned.key });
         setSuccess("Photo uploaded and staged for save.");
-      } catch (err: any) {
+      } catch (err: unknown) {
         setError(err.message || "Failed to upload photo");
       } finally {
         setEditPhotoLoading(false);
@@ -310,7 +324,7 @@ export default function AdminDashboard() {
         await uploadFileToS3(presigned.uploadUrl, file);
         setEditFormData({ ...editFormData, documentProof: presigned.key });
         setSuccess("Document uploaded and staged for save.");
-      } catch (err: any) {
+      } catch (err: unknown) {
         setError(err.message || "Failed to upload document");
       } finally {
         setEditDocLoading(false);
@@ -327,7 +341,7 @@ export default function AdminDashboard() {
         await uploadFileToS3(presigned.uploadUrl, file);
         setEditFormData({ ...editFormData, documentProofBack: presigned.key });
         setSuccess("Aadhar back uploaded and staged for save.");
-      } catch (err: any) {
+      } catch (err: unknown) {
         setError(err.message || "Failed to upload aadhar back");
       } finally {
         setEditDocBackLoading(false);
@@ -344,7 +358,7 @@ export default function AdminDashboard() {
         await uploadFileToS3(presigned.uploadUrl, file);
         setEditFormData({ ...editFormData, paymentScreenshot: presigned.key });
         setSuccess("Payment receipt uploaded and staged for save.");
-      } catch (err: any) {
+      } catch (err: unknown) {
         setError(err.message || "Failed to upload payment receipt");
       } finally {
         setEditPaymentLoading(false);
@@ -357,7 +371,7 @@ export default function AdminDashboard() {
     try {
       const data = await getAdminStats();
       setStats(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching stats:", err);
     }
   };
@@ -377,7 +391,7 @@ export default function AdminDashboard() {
       setMembers(data.members);
       setTotalPages(data.totalPages);
       setTotalMembers(data.total);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching members:", err);
       setError(err.message || "Failed to load directory.");
     } finally {
@@ -391,14 +405,28 @@ export default function AdminDashboard() {
       const data = await getAdminAuditLogs(logPage, 10);
       setAuditLogs(data.logs);
       setLogTotalPages(data.totalPages);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching audit logs:", err);
+    }
+  };
+
+  // Fetch Analytics
+  const fetchAnalytics = async () => {
+    setAnalyticsLoading(true);
+    try {
+      const data = await getAdminAnalytics();
+      setAnalytics(data);
+    } catch (err: unknown) {
+      console.error("Error fetching analytics:", err);
+    } finally {
+      setAnalyticsLoading(false);
     }
   };
 
   // Trigger loading data
   useEffect(() => {
     fetchStats();
+    fetchAnalytics();
   }, []);
 
   useEffect(() => {
@@ -413,6 +441,7 @@ export default function AdminDashboard() {
     } else if (activeTab === "admins") {
       fetchAdmins();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, page, logPage, paymentFilter, approvalFilter]);
 
 
@@ -421,6 +450,57 @@ export default function AdminDashboard() {
     e.preventDefault();
     setPage(1);
     fetchMembers();
+  };
+
+  // Bulk Print Handle
+  const handleBulkPrint = async () => {
+    if (selectedUserIds.length === 0) return;
+    setBulkPrintLoading(true);
+    setError("");
+    setSuccess("");
+    try {
+      const blob = await bulkPrintCards(selectedUserIds);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "bulk_id_cards.pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setSuccess("Bulk PDF generated and downloaded.");
+      setSelectedUserIds([]);
+    } catch (err: unknown) {
+      setError(err.message || "Failed to generate bulk PDF.");
+    } finally {
+      setBulkPrintLoading(false);
+    }
+  };
+
+  // Export to CSV
+  const handleExportCSV = () => {
+    if (!members || members.length === 0) {
+      setError("No members to export.");
+      return;
+    }
+    const headers = ["Name", "Email", "Phone", "Membership ID", "City", "State", "Payment Status", "Approval Status"];
+    const rows = members.map(m => [
+      m.name || "",
+      m.email || "",
+      m.phone || "",
+      m.membershipId || "N/A",
+      m.city || "",
+      m.state || "",
+      m.paymentStatus || "",
+      m.approvalStatus || ""
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const a = document.createElement("a");
+    a.href = encodedUri;
+    a.download = "members_export.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   };
 
   // Logout handler
@@ -449,7 +529,7 @@ export default function AdminDashboard() {
       if (inspectingMember && inspectingMember._id === id) {
         setInspectingMember({ ...inspectingMember, paymentStatus: status, paymentRejectionReason: status === "rejected" ? rejectionReason : undefined, paymentNotes });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message || "Operation failed.");
     } finally {
       setActionLoading(false);
@@ -475,7 +555,7 @@ export default function AdminDashboard() {
       if (inspectingMember && inspectingMember._id === id) {
         setInspectingMember({ ...inspectingMember, approvalStatus: status, membershipRejectionReason: status === "rejected" ? rejectionReason : undefined });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message || "Operation failed.");
     } finally {
       setActionLoading(false);
@@ -494,7 +574,7 @@ export default function AdminDashboard() {
       setSuccess("Member details updated successfully.");
       setEditingMember(null);
       fetchMembers();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message || "Failed to update member.");
     } finally {
       setActionLoading(false);
@@ -543,7 +623,7 @@ export default function AdminDashboard() {
       // Refresh list
       fetchMembers();
       fetchStats();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message || "Failed to upload manual payment receipt.");
     } finally {
       setActionLoading(false);
@@ -551,6 +631,7 @@ export default function AdminDashboard() {
   };
 
   // Edit open
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const openEditModal = (member: any) => {
     setEditingMember(member);
     setEditFormData({
@@ -569,21 +650,7 @@ export default function AdminDashboard() {
     setError("");
     setSuccess("");};
 
-  const handleUpdateCashback = async (id: string, status: string) => {
-    if (!window.confirm(`Are you sure you want to change cashback status to ${status}?`)) return;
-    setActionLoading(true);
-    setError("");
-    setSuccess("");
-    try {
-      await updateCashbackStatus(id, status);
-      setSuccess(`Cashback marked as ${status} successfully.`);
-      fetchCashbacks();
-    } catch (err: any) {
-      setError(err.message || "Operation failed.");
-    } finally {
-      setActionLoading(false);
-    }
-  };
+
 
   // Delete Member Action
   const handleDeleteMember = async (id: string) => {
@@ -596,7 +663,7 @@ export default function AdminDashboard() {
       setSuccess("Application deleted permanently.");
       fetchStats();
       fetchMembers();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message || "Failed to delete application.");
     } finally {
       setActionLoading(false);
@@ -612,7 +679,7 @@ export default function AdminDashboard() {
     try {
       await resetMemberPassword(id);
       setSuccess("Password reset successfully. Email sent to member.");
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message || "Failed to reset password.");
     } finally {
       setActionLoading(false);
@@ -631,7 +698,7 @@ export default function AdminDashboard() {
         setInspectingMember({ ...inspectingMember, isEmailVerified: false });
       }
       fetchMembers();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message || "Failed to reset email verification.");
     } finally {
       setActionLoading(false);
@@ -650,7 +717,7 @@ export default function AdminDashboard() {
         setInspectingMember({ ...inspectingMember, accountStatus: status });
       }
       fetchMembers();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message || "Failed to update account status.");
     } finally {
       setActionLoading(false);
@@ -703,7 +770,15 @@ export default function AdminDashboard() {
         </div>
 
         {/* Tab Controls */}
-        <div className="flex gap-2 border-b">
+        <div className="flex gap-2 border-b overflow-x-auto pb-1 hide-scrollbar">
+          <button
+            onClick={() => setActiveTab("analytics")}
+            className={`px-6 py-2.5 text-xs font-black tracking-wider uppercase border-b-2 transition-all whitespace-nowrap ${
+              activeTab === "analytics" ? "border-amber-500 text-slate-900 font-extrabold" : "border-transparent text-slate-500 hover:text-slate-900"
+            }`}
+          >
+            Analytics & Reports
+          </button>
           <button
             onClick={() => setActiveTab("members")}
             className={`px-6 py-2.5 text-xs font-black tracking-wider uppercase border-b-2 transition-all ${
@@ -775,6 +850,62 @@ export default function AdminDashboard() {
         </AnimatePresence>
 
         {/* Active tab content */}
+        {activeTab === "analytics" && (
+          <div className="space-y-6">
+            <h3 className="text-xl font-bold text-slate-800">Analytics & Reports</h3>
+            {analyticsLoading ? (
+              <div className="flex justify-center items-center py-20"><Loader2 className="w-8 h-8 animate-spin text-amber-500" /></div>
+            ) : analytics ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white p-6 rounded-2xl border shadow-sm">
+                  <h4 className="text-sm font-bold text-slate-700 mb-4">Monthly Registrations</h4>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={analytics.monthlyGrowth}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" fontSize={10} />
+                        <YAxis fontSize={10} />
+                        <RechartsTooltip />
+                        <Line type="monotone" dataKey="members" stroke="#f59e0b" strokeWidth={3} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+                <div className="bg-white p-6 rounded-2xl border shadow-sm">
+                  <h4 className="text-sm font-bold text-slate-700 mb-4">Revenue Trend</h4>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={analytics.monthlyRevenue}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" fontSize={10} />
+                        <YAxis fontSize={10} />
+                        <RechartsTooltip />
+                        <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={3} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+                <div className="bg-white p-6 rounded-2xl border shadow-sm lg:col-span-2">
+                  <h4 className="text-sm font-bold text-slate-700 mb-4">State-wise Member Distribution</h4>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={analytics.stateDistribution}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" fontSize={10} />
+                        <YAxis fontSize={10} />
+                        <RechartsTooltip />
+                        <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-20 text-slate-500">No analytics data available</div>
+            )}
+          </div>
+        )}
+
         {activeTab === "members" && (
           <div className="space-y-6">
             
@@ -831,12 +962,46 @@ export default function AdminDashboard() {
               </div>
             </form>
 
+            {/* Bulk Actions */}
+            <div className="flex flex-wrap gap-3 mb-2">
+              <button 
+                onClick={handleExportCSV}
+                className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-bold transition-colors"
+              >
+                <FileText className="w-4 h-4" /> Export to CSV
+              </button>
+              {selectedUserIds.length > 0 && (
+                <button 
+                  onClick={handleBulkPrint}
+                  disabled={bulkPrintLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-colors"
+                >
+                  {bulkPrintLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
+                  Bulk Print Cards ({selectedUserIds.length})
+                </button>
+              )}
+            </div>
+
             {/* Members Directory Table */}
-            <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
+            <div className="bg-white border rounded-2xl overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/50 border-b text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                      <th className="py-4 px-4 w-10">
+                        <input 
+                          type="checkbox" 
+                          className="rounded border-slate-300 text-amber-500 focus:ring-amber-500"
+                          checked={members.length > 0 && selectedUserIds.length === members.length}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedUserIds(members.map(m => m._id));
+                            } else {
+                              setSelectedUserIds([]);
+                            }
+                          }}
+                        />
+                      </th>
                       <th className="py-4 px-6">Member Profile</th>
                       <th className="py-4 px-4">State/City</th>
                       <th className="py-4 px-4">Contact Info</th>
@@ -849,19 +1014,34 @@ export default function AdminDashboard() {
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan={7} className="py-24 text-center text-xs text-slate-400 font-bold">
+                        <td colSpan={8} className="py-24 text-center text-xs text-slate-400 font-bold">
                           Syncing register logs...
                         </td>
                       </tr>
                     ) : members.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-24 text-center text-xs text-slate-400 leading-relaxed font-bold">
+                        <td colSpan={8} className="py-24 text-center text-xs text-slate-400 leading-relaxed font-bold">
                           No matching applications found in the records.
                         </td>
                       </tr>
                     ) : (
                       members.map((member) => (
                         <tr key={member._id} className="border-b last:border-0 hover:bg-slate-50/30 text-xs">
+                          {/* Checkbox */}
+                          <td className="py-4 px-4">
+                            <input 
+                              type="checkbox" 
+                              className="rounded border-slate-300 text-amber-500 focus:ring-amber-500"
+                              checked={selectedUserIds.includes(member._id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedUserIds(prev => [...prev, member._id]);
+                                } else {
+                                  setSelectedUserIds(prev => prev.filter(id => id !== member._id));
+                                }
+                              }}
+                            />
+                          </td>
                           {/* Profile */}
                           <td className="py-4 px-6 flex items-center gap-3 min-w-[200px]">
                             <div className="h-9 w-9 bg-slate-200 rounded-full overflow-hidden flex-shrink-0 border">
@@ -1104,95 +1284,7 @@ export default function AdminDashboard() {
         )}
 
         {activeTab === "cashbacks" && (
-          /* CASHBACKS TAB */
-          <div className="space-y-6">
-            <div className="bg-white border rounded-3xl overflow-hidden shadow-sm">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50/50 border-b text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                      <th className="py-4 px-6">Coordinator Info</th>
-                      <th className="py-4 px-4">Referrals & Amount</th>
-                      <th className="py-4 px-4">Status & Action</th>
-                      <th className="py-4 px-4">Eligibility Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cashbacksLoading ? (
-                      <tr>
-                        <td colSpan={4} className="py-20 text-center text-xs text-slate-400 font-bold">
-                          Loading cashbacks...
-                        </td>
-                      </tr>
-                    ) : cashbacks.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="py-20 text-center text-xs text-slate-400 font-bold">
-                          No cashback records found.
-                        </td>
-                      </tr>
-                    ) : (
-                      cashbacks.map((cb) => (
-                        <tr key={cb._id} className="border-b last:border-0 hover:bg-slate-50/30 text-xs">
-                          <td className="py-4 px-6">
-                            {cb.coordinatorId ? (
-                              <div>
-                                <span className="font-bold text-slate-800 text-sm">{cb.coordinatorId.name}</span>
-                                <div className="text-[10px] text-slate-500 font-mono mt-0.5">{cb.coordinatorId.coordinatorCode}</div>
-                                <div className="text-[10px] text-slate-400 mt-0.5">{cb.coordinatorId.phone}</div>
-                              </div>
-                            ) : (
-                              <span className="text-red-500 italic">Coordinator Deleted</span>
-                            )}
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className="font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full text-[10px]">
-                              {cb.referralCount} / {cb.threshold} Referrals
-                            </span>
-                            <div className="mt-2 font-black text-green-700 text-sm flex items-center gap-1">
-                              <IndianRupee className="h-3.5 w-3.5" /> {cb.amount}
-                            </div>
-                          </td>
-                          <td className="py-4 px-4">
-                            <div className="flex flex-col gap-2 items-start">
-                              <span className={`inline-flex rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${
-                                cb.status === "eligible" ? "bg-amber-50 text-amber-600 border border-amber-200" :
-                                cb.status === "processing" ? "bg-blue-50 text-blue-600 border border-blue-200 animate-pulse" :
-                                cb.status === "paid" ? "bg-green-50 text-green-600 border border-green-200" :
-                                "bg-red-50 text-red-600 border border-red-200"
-                              }`}>
-                                {cb.status}
-                              </span>
-                              
-                              <div className="flex gap-1 mt-1">
-                                {cb.status === "eligible" && (
-                                  <>
-                                    <button onClick={() => handleUpdateCashback(cb._id, "processing")} className="text-[10px] bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded font-bold transition">Process</button>
-                                    <button onClick={() => handleUpdateCashback(cb._id, "rejected")} className="text-[10px] bg-slate-100 hover:bg-red-100 hover:text-red-700 text-slate-600 px-2 py-1 rounded font-bold transition">Reject</button>
-                                  </>
-                                )}
-                                {cb.status === "processing" && (
-                                  <>
-                                    <button onClick={() => handleUpdateCashback(cb._id, "paid")} className="text-[10px] bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded font-bold transition">Mark Paid</button>
-                                    <button onClick={() => handleUpdateCashback(cb._id, "rejected")} className="text-[10px] bg-slate-100 hover:bg-red-100 hover:text-red-700 text-slate-600 px-2 py-1 rounded font-bold transition">Reject</button>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-4 px-4 text-slate-500 font-mono text-[10px]">
-                            {new Date(cb.eligibleAt).toLocaleString("en-IN")}
-                            {cb.processedAt && (
-                              <div className="mt-1 text-green-600">Processed: {new Date(cb.processedAt).toLocaleString("en-IN")}</div>
-                            )}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+          <CashbackManagement />
         )}
 
         {activeTab === "admins" && (
@@ -1448,6 +1540,11 @@ export default function AdminDashboard() {
                     <h4 className="font-extrabold text-slate-900 text-lg">{inspectingMember.name}</h4>
                     <p className="text-xs text-slate-550">{inspectingMember.designation} • {inspectingMember.organization || "Independent"}</p>
                     <p className="text-[10px] text-slate-400 font-mono mt-0.5">{inspectingMember.email} | {inspectingMember.phone}</p>
+                    {inspectingMember.coordinatorCode && (
+                      <p className="text-[10px] text-slate-500 mt-1.5 font-bold">
+                        Referral Code: <span className="text-amber-600 px-2 py-0.5 bg-amber-50 border border-amber-200 rounded-full">{inspectingMember.coordinatorCode}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
 

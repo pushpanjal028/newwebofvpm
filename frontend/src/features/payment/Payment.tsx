@@ -61,7 +61,7 @@ export default function Payment() {
     if (emailParam && !emailOrPhone) {
       setEmailOrPhone(emailParam);
     }
-  }, [emailParam]);
+  }, [emailParam, emailOrPhone]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -81,7 +81,7 @@ export default function Payment() {
         
         setScreenshotKey(presigned.key);
         setScreenshotName(file.name);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("❌ File upload error:", err);
         setError("Payment screenshot upload failed. Please try again.");
       } finally {
@@ -145,7 +145,7 @@ export default function Payment() {
       setTimeout(() => {
         navigate(`/success?emailOrPhone=${encodeURIComponent(emailOrPhone)}`);
       }, 2500);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("❌ Payment submission error:", err);
       setError(err.message || "Failed to submit payment. Please verify your registered email or phone.");
     } finally {

@@ -2,17 +2,20 @@ import User from "../../models/User.js";
 import AuditLog from "../../models/AuditLog.js";
 import Referral from "../../models/Referral.js";
 import Cashback from "../../models/Cashback.js";
+import RewardConfig from "../../models/RewardConfig.js";
+import PaymentDetails from "../../models/PaymentDetails.js";
 import mongoose from "mongoose";
 import transporter from "../../config/mailer.js";
 import MemberCard from "../../models/MemberCard.js";
 import { generateCardPDF } from "../member/cardGenerator.service.js";
 import { sendCardEmail } from "../member/cardEmail.service.js";
-import { uploadBufferToS3 } from "../../utils/s3.js";
+import { uploadBufferToS3, generatePresignedGetUrl } from "../../utils/s3.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
+import { PDFDocument } from 'pdf-lib';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -321,36 +324,53 @@ async function processReferralEligibilityHook(userId) {
       status: "eligible"
     }).session(session);
 
+    // Fetch dynamic reward configuration
+    let config = await RewardConfig.findOne({ active: true }).session(session);
+    if (!config) {
+      // Fallback to default rule
+      config = {
+        requiredReferrals: 10,
+        grossCashback: 200,
+        processingFee: 0,
+      };
+    }
+
     emailData = {
       type: "REFERRAL_COUNTED",
       coordinatorEmail: coordinator?.email,
       coordinatorCode: coordinator?.coordinatorCode,
       eligibleCount,
-      threshold: 10,
+      threshold: config.requiredReferrals,
+      grossAmount: config.grossCashback,
+      processingFee: config.processingFee,
     };
 
-    // 2. Check Cashback Eligibility (10 referrals)
-    if (eligibleCount >= 10) {
+    // 2. Check Cashback Eligibility (Dynamic threshold)
+    if (eligibleCount >= config.requiredReferrals) {
       // Check if reward already exists
       const existingCashback = await Cashback.findOne({
         coordinatorId,
-        threshold: 10
+        threshold: config.requiredReferrals
       }).session(session);
 
       if (!existingCashback) {
+        const netPayable = config.grossCashback - config.processingFee;
         // Create Cashback reward
         const cashback = new Cashback({
           coordinatorId,
           referralCount: eligibleCount,
-          threshold: 10,
-          amount: 500,
+          threshold: config.requiredReferrals,
+          grossAmount: config.grossCashback,
+          processingFee: config.processingFee,
+          netAmount: netPayable,
           status: "eligible",
         });
         
         try {
           await cashback.save({ session });
           emailData.type = "CASHBACK_EARNED";
-          emailData.amount = 500;
+          emailData.amount = config.grossCashback;
+          emailData.netAmount = netPayable;
         } catch (err) {
           // Handle duplicate key error gracefully if hit by race condition
           if (err.code === 11000) {
@@ -378,8 +398,8 @@ async function processReferralEligibilityHook(userId) {
         await transporter.sendMail({
           from: process.env.FROM_EMAIL,
           to: emailData.coordinatorEmail,
-          subject: "Congratulations! You Are Eligible for ₹500 Cashback",
-          text: `You have successfully reached ${emailData.threshold} eligible referrals! \n\nAmount: ₹${emailData.amount}\nStatus: Eligible\n\nThe administration team will review and process your cashback soon.`
+          subject: `Congratulations! You Are Eligible for ₹${emailData.amount} Cashback`,
+          text: `You have successfully reached ${emailData.threshold} eligible referrals! \n\nGross Amount: ₹${emailData.amount}\nProcessing Fee: ₹${emailData.processingFee}\nNet Payable: ₹${emailData.netAmount}\nStatus: Eligible\n\nThe administration team will review and process your cashback soon.`
         });
       } else if (emailData.type === "REFERRAL_COUNTED") {
         const remaining = Math.max(0, emailData.threshold - emailData.eligibleCount);
@@ -387,7 +407,7 @@ async function processReferralEligibilityHook(userId) {
           from: process.env.FROM_EMAIL,
           to: emailData.coordinatorEmail,
           subject: "Your VPMH Referral Has Been Counted",
-          text: `Great news! A member you referred (${emailData.coordinatorCode}) has successfully completed their payment and your referral is now eligible.\n\nCurrent Eligible Referrals: ${emailData.eligibleCount}\nRemaining to reach ₹500 cashback: ${remaining}`
+          text: `Great news! A member you referred (${emailData.coordinatorCode}) has successfully completed their payment and your referral is now eligible.\n\nCurrent Eligible Referrals: ${emailData.eligibleCount}\nRemaining to reach ₹${emailData.grossAmount} cashback: ${remaining}`
         });
       }
     } catch (emailErr) {
@@ -458,66 +478,64 @@ export const verifyMembershipService = async (adminUser, id, { status, rejection
   await user.save();
 
   if (status === "approved") {
-    // Run asynchronously to prevent API timeout
-    (async () => {
-      try {
-        // Check if MemberCard already exists to ensure idempotency
-        let memberCard = await MemberCard.findOne({ userId: user._id });
+    // Await card generation so serverless functions don't kill it
+    try {
+      // Check if MemberCard already exists to ensure idempotency
+      let memberCard = await MemberCard.findOne({ userId: user._id });
+      
+      if (!memberCard) {
+        // Generate PDF
+        const pdfBuffer = await generateCardPDF({
+          membershipId: user.membershipId,
+          name: user.name,
+          designation: user.designation,
+          organization: user.organization,
+          city: user.city,
+          state: user.state,
+          phone: user.phone,
+          photoUrl: user.photo ? (user.photo.startsWith('http') ? user.photo : `${process.env.API_URL || 'http://localhost:5000'}/api/uploads/view/${user.photo}`) : null,
+          localPhotoPath: user.photo,
+          validFromStr: user.issueDate.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" }),
+          validUntilStr: user.expiryDate.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" }),
+        });
+
+        // Save PDF to S3 or Local
+        const pdfFilename = `member_card_${user.membershipId}_${Date.now()}.pdf`;
+        let pdfUrl = `uploads/${pdfFilename}`;
         
-        if (!memberCard) {
-          // Generate PDF
-          const pdfBuffer = await generateCardPDF({
-            membershipId: user.membershipId,
-            name: user.name,
-            designation: user.designation,
-            organization: user.organization,
-            city: user.city,
-            state: user.state,
-            phone: user.phone,
-            photoUrl: user.photo ? (user.photo.startsWith('http') ? user.photo : `${process.env.API_URL || 'http://localhost:5000'}/api/uploads/view/${user.photo}`) : null,
-            localPhotoPath: user.photo,
-            validFromStr: user.issueDate.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" }),
-            validUntilStr: user.expiryDate.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" }),
-          });
-
-          // Save PDF to S3 or Local
-          const pdfFilename = `member_card_${user.membershipId}_${Date.now()}.pdf`;
-          let pdfUrl = `uploads/${pdfFilename}`;
-          
-          if (process.env.AWS_BUCKET_NAME) {
-            await uploadBufferToS3(pdfUrl, pdfBuffer, "application/pdf");
-          } else {
-            const localPath = path.join(__dirname, "../../../uploads", pdfFilename);
-            fs.writeFileSync(localPath, pdfBuffer);
-          }
-
-          // Create MemberCard
-          memberCard = new MemberCard({
-            userId: user._id,
-            cardNumber: user.membershipId,
-            validFrom: user.issueDate,
-            validUntil: user.expiryDate,
-            pdfUrl: pdfUrl,
-          });
-          await memberCard.save();
-
-          // Send Email
-          try {
-            await sendCardEmail(user.email, user.name, pdfBuffer);
-            memberCard.emailSendStatus = "sent";
-            memberCard.emailSentAt = new Date();
-            await memberCard.save();
-          } catch (emailErr) {
-            memberCard.emailSendStatus = "failed";
-            memberCard.emailLastError = emailErr.message;
-            await memberCard.save();
-            console.error("❌ Email failed during I-Card generation, but DB state is safe:", emailErr);
-          }
+        if (process.env.AWS_BUCKET_NAME) {
+          await uploadBufferToS3(pdfUrl, pdfBuffer, "application/pdf");
+        } else {
+          const localPath = path.join(__dirname, "../../../uploads", pdfFilename);
+          fs.writeFileSync(localPath, pdfBuffer);
         }
-      } catch (cardErr) {
-        console.error("❌ I-Card generation failed, but member approval is safe:", cardErr);
+
+        // Create MemberCard
+        memberCard = new MemberCard({
+          userId: user._id,
+          cardNumber: user.membershipId,
+          validFrom: user.issueDate,
+          validUntil: user.expiryDate,
+          pdfUrl: pdfUrl,
+        });
+        await memberCard.save();
+
+        // Send Email
+        try {
+          await sendCardEmail(user.email, user.name, pdfBuffer);
+          memberCard.emailSendStatus = "sent";
+          memberCard.emailSentAt = new Date();
+          await memberCard.save();
+        } catch (emailErr) {
+          memberCard.emailSendStatus = "failed";
+          memberCard.emailLastError = emailErr.message;
+          await memberCard.save();
+          console.error("❌ Email failed during I-Card generation, but DB state is safe:", emailErr);
+        }
       }
-    })();
+    } catch (cardErr) {
+      console.error("❌ I-Card generation failed, but member approval is safe:", cardErr);
+    }
   }
 
   const newValue = { approvalStatus: user.approvalStatus, membershipRejectionReason: user.membershipRejectionReason };
@@ -531,13 +549,43 @@ export const verifyMembershipService = async (adminUser, id, { status, rejection
 };
 
 export const getCashbacksService = async () => {
-  const cashbacks = await Cashback.find().populate("coordinatorId", "name email phone coordinatorCode").sort({ createdAt: -1 });
-  return cashbacks;
+  const cashbacks = await Cashback.find().populate("coordinatorId", "name email phone coordinatorCode").sort({ createdAt: -1 }).lean();
+  
+  const cashbacksWithPaymentDetails = await Promise.all(cashbacks.map(async (cashback) => {
+    let paymentDetails = null;
+    let referredMembers = [];
+    if (cashback.coordinatorId && cashback.coordinatorId._id) {
+      paymentDetails = await PaymentDetails.findOne({ userId: cashback.coordinatorId._id }).lean();
+      
+      // Fetch the members that this coordinator referred leading up to this cashback.
+      // E.g. we can just fetch all eligible referrals for this coordinator.
+      // If we strictly want to limit to the exact 10, we can limit it by the date `eligibleAt` of the cashback,
+      // but typically fetching all eligible or the top 10 is enough. Let's fetch the eligible referrals up to this cashback's creation.
+      const referrals = await Referral.find({ 
+        coordinatorId: cashback.coordinatorId._id,
+        status: "eligible",
+        createdAt: { $lte: cashback.createdAt }
+      }).populate("referredUserId", "name email phone membershipId approvalStatus").sort({ createdAt: -1 }).limit(cashback.threshold).lean();
+      
+      referredMembers = referrals.map(ref => ({
+        _id: ref.referredUserId?._id,
+        name: ref.referredUserId?.name,
+        email: ref.referredUserId?.email,
+        phone: ref.referredUserId?.phone,
+        membershipId: ref.referredUserId?.membershipId,
+        approvalStatus: ref.referredUserId?.approvalStatus,
+        date: ref.createdAt
+      }));
+    }
+    return { ...cashback, paymentDetails, referredMembers };
+  }));
+
+  return cashbacksWithPaymentDetails;
 };
 
-export const updateCashbackStatusService = async (adminUser, id, status) => {
+export const updateCashbackStatusService = async (adminUser, id, { status, rejectionReason, paymentMethod, transactionId, adminNotes, paidAmount }) => {
   const validTransitions = {
-    "eligible": ["processing", "rejected"],
+    "eligible": ["processing", "rejected", "paid"],
     "processing": ["paid", "rejected"],
     "paid": [],
     "rejected": []
@@ -552,16 +600,46 @@ export const updateCashbackStatusService = async (adminUser, id, status) => {
     throw new Error(`Invalid status transition from ${cashback.status} to ${status}`);
   }
 
-  cashback.status = status;
+  if (status === "rejected" && !rejectionReason) {
+    throw new Error("Rejection reason is required when rejecting cashback");
+  }
+
   if (status === "paid") {
+    if (!paymentMethod || !transactionId) {
+      throw new Error("Payment method and transaction ID are required when marking as paid");
+    }
+  }
+
+  cashback.status = status;
+  
+  if (status === "processing") {
+    cashback.approvedBy = adminUser._id;
+    cashback.approvedAt = new Date();
+  } else if (status === "paid") {
+    cashback.paidAt = new Date();
     cashback.processedAt = new Date();
+    cashback.paymentMethod = paymentMethod;
+    cashback.transactionId = transactionId;
+    if (!cashback.approvedBy) {
+        cashback.approvedBy = adminUser._id;
+        cashback.approvedAt = new Date();
+    }
+  } else if (status === "rejected") {
+    cashback.rejectedBy = adminUser._id;
+    cashback.rejectedAt = new Date();
+    cashback.rejectionReason = rejectionReason;
+  }
+
+  if (adminNotes) {
+    cashback.adminNotes = adminNotes;
   }
 
   await cashback.save();
 
   await logAdminAction(adminUser, `CASHBACK_${status.toUpperCase()}`, cashback.coordinatorId, {
     cashbackId: cashback._id,
-    amount: cashback.amount,
+    amount: cashback.grossAmount,
+    netAmount: cashback.netAmount
   });
 
   return { message: `Cashback status updated to ${status}`, cashback };
@@ -692,4 +770,95 @@ export const deleteAdminService = async (adminUser, id) => {
   await logAdminAction(adminUser, "ADMIN_DELETED", adminToDelete._id, { email: adminToDelete.email });
 
   return { message: "Admin deleted successfully" };
+};
+
+export const getAnalyticsService = async () => {
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+  sixMonthsAgo.setDate(1);
+  sixMonthsAgo.setHours(0, 0, 0, 0);
+
+  const monthlyGrowthData = await User.aggregate([
+    { $match: { createdAt: { $gte: sixMonthsAgo }, isAdmin: { $ne: true } } },
+    {
+      $group: {
+        _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } },
+        members: { $sum: 1 },
+      },
+    },
+    { $sort: { "_id.year": 1, "_id.month": 1 } },
+  ]);
+
+  const monthlyRevenueData = await User.aggregate([
+    { $match: { paymentStatus: "paid", createdAt: { $gte: sixMonthsAgo } } },
+    {
+      $group: {
+        _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } },
+        revenue: { $sum: "$membershipFee" },
+      },
+    },
+    { $sort: { "_id.year": 1, "_id.month": 1 } },
+  ]);
+
+  const stateDistributionData = await User.aggregate([
+    { $match: { state: { $exists: true, $ne: "" }, isAdmin: { $ne: true } } },
+    { $group: { _id: "$state", count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+  ]);
+
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  const formatMonthlyData = (data, key) => {
+    return data.map((item) => ({
+      name: `${monthNames[item._id.month - 1]} ${item._id.year}`,
+      [key]: item[key],
+    }));
+  };
+
+  return {
+    monthlyGrowth: formatMonthlyData(monthlyGrowthData, "members"),
+    monthlyRevenue: formatMonthlyData(monthlyRevenueData, "revenue"),
+    stateDistribution: stateDistributionData.map(item => ({ name: item._id, value: item.count }))
+  };
+};
+
+export const bulkPrintCardsService = async (userIds) => {
+  if (!Array.isArray(userIds) || userIds.length === 0) {
+    throw new Error("Invalid user IDs provided.");
+  }
+
+  const mergedPdf = await PDFDocument.create();
+  
+  for (const userId of userIds) {
+    const memberCard = await MemberCard.findOne({ userId });
+    if (!memberCard || !memberCard.pdfUrl) {
+      continue;
+    }
+
+    let pdfBuffer;
+    if (process.env.AWS_BUCKET_NAME) {
+      const url = await generatePresignedGetUrl(memberCard.pdfUrl);
+      const response = await fetch(url);
+      if (response.ok) {
+        const arrayBuffer = await response.arrayBuffer();
+        pdfBuffer = Buffer.from(arrayBuffer);
+      }
+    } else {
+      const localPath = path.join(__dirname, "../../../", memberCard.pdfUrl);
+      if (fs.existsSync(localPath)) {
+        pdfBuffer = fs.readFileSync(localPath);
+      }
+    }
+
+    if (pdfBuffer) {
+      const cardPdf = await PDFDocument.load(pdfBuffer);
+      const copiedPages = await mergedPdf.copyPages(cardPdf, cardPdf.getPageIndices());
+      copiedPages.forEach((page) => {
+        mergedPdf.addPage(page);
+      });
+    }
+  }
+
+  const mergedPdfBytes = await mergedPdf.save();
+  return Buffer.from(mergedPdfBytes);
 };

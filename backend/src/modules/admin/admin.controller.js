@@ -14,7 +14,9 @@ import {
   getAdminsService,
   createAdminService,
   updateAdminRoleService,
-  deleteAdminService
+  deleteAdminService,
+  getAnalyticsService,
+  bulkPrintCardsService
 } from "./admin.service.js";
 
 export const getAdminStats = async (req, res) => {
@@ -124,8 +126,15 @@ export const getCashbacks = async (req, res) => {
 
 export const updateCashbackStatus = async (req, res) => {
   try {
-    const { status } = req.body;
-    const result = await updateCashbackStatusService(req.user, req.params.id, status);
+    const { status, rejectionReason, paymentMethod, transactionId, adminNotes, paidAmount } = req.body;
+    const result = await updateCashbackStatusService(req.user, req.params.id, { 
+      status, 
+      rejectionReason, 
+      paymentMethod, 
+      transactionId, 
+      adminNotes, 
+      paidAmount 
+    });
     res.json(result);
   } catch (err) {
     console.error("❌ Cashback status update controller error:", err);
@@ -202,6 +211,29 @@ export const deleteAdmin = async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error("❌ Delete admin controller error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const getAnalytics = async (req, res) => {
+  try {
+    const result = await getAnalyticsService();
+    res.json(result);
+  } catch (err) {
+    console.error("❌ Get analytics error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const bulkPrintCards = async (req, res) => {
+  try {
+    const { userIds } = req.body;
+    const pdfBuffer = await bulkPrintCardsService(userIds);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=bulk_id_cards.pdf');
+    res.send(pdfBuffer);
+  } catch (err) {
+    console.error("❌ Bulk print cards error:", err);
     res.status(500).json({ message: err.message });
   }
 };

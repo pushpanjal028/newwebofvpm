@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 import User from "../../models/User.js";
 import Referral from "../../models/Referral.js";
 import MemberCard from "../../models/MemberCard.js";
+import Cashback from "../../models/Cashback.js";
+import RewardConfig from "../../models/RewardConfig.js";
 
 export const getPublicMembersService = async () => {
   return await User.find({
@@ -103,8 +105,23 @@ export const getCoordinatorDashboardService = async (coordinatorId) => {
     };
   });
 
-  const threshold = 10;
-  const progress = Math.min((eligibleReferrals / threshold) * 100, 100);
+  // Fetch dynamic reward config
+  let config = await RewardConfig.findOne({ active: true });
+  if (!config) {
+    config = {
+      requiredReferrals: 10,
+      grossCashback: 200,
+      processingFee: 0,
+    };
+  }
+
+  const threshold = config.requiredReferrals;
+  const cashbackAmount = config.grossCashback;
+  const processingFee = config.processingFee;
+  const progress = Math.min((eligibleReferrals % threshold) / threshold * 100, 100);
+
+  // Fetch Cashback rewards
+  const cashbacks = await Cashback.find({ coordinatorId }).sort({ createdAt: -1 });
 
   return {
     coordinatorCode: coordinator.coordinatorCode,
@@ -112,8 +129,10 @@ export const getCoordinatorDashboardService = async (coordinatorId) => {
     pendingReferrals,
     eligibleReferrals,
     threshold,
+    cashbackAmount,
+    processingFee,
     progress,
-    cashbackAmount: 500, // Hardcoded for this phase
     history,
+    cashbacks, // Include cashback rewards
   };
 };

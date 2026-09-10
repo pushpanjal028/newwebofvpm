@@ -16,7 +16,7 @@ import GlobeCanvas from "../../components/ui/GlobeCanvas";
 
 export default function Home() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [videos, setVideos] = useState<any[]>([]);
+  const [videos, setVideos] = useState<Record<string, unknown>[]>([]);
   const [loadingVideos, setLoadingVideos] = useState(true);
 
   useEffect(() => {
@@ -28,7 +28,7 @@ export default function Home() {
       .then((res) => res.json())
       .then((data) => {
         if (data.items) {
-          const formattedVideos = data.items.map((item: any) => ({
+          const formattedVideos = data.items.map((item: Record<string, unknown>) => ({
             id: item.id?.videoId || item.id,
             title: item.snippet.title,
             thumbnail: item.snippet.thumbnails.high.url,

@@ -1,6 +1,6 @@
 import { BASE_URL } from "./client";
 
-export const submitPayment = async (paymentData: any) => {
+export const submitPayment = async (paymentData: Record<string, unknown>) => {
   const res = await fetch(`${BASE_URL}/auth/payment/submit`, {
     method: "POST",
     headers: {

@@ -10,7 +10,7 @@ import adminRouter from "./modules/admin/index.js";
 import memberRouter from "./modules/member/index.js";
 import uploadRouter from "./modules/upload/index.js";
 import galleryRouter from "./modules/gallery/index.js";
-
+import paymentDetailsRouter from "./modules/paymentDetails/paymentDetails.routes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -55,7 +55,7 @@ app.use("/api/admin", adminRouter);
 app.use("/api/members", memberRouter);
 app.use("/api/uploads", uploadRouter);
 app.use("/api/gallery", galleryRouter);
-
+app.use("/api/payment-details", paymentDetailsRouter);
 
 // Custom JSON global error handler
 app.use((err, req, res, next) => {

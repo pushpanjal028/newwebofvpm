@@ -28,6 +28,22 @@ const referralSchema = new mongoose.Schema(
     eligibleAt: {
       type: Date,
     },
+    isHistorical: {
+      type: Boolean,
+      default: false,
+    },
+    source: {
+      type: String,
+      enum: [
+        "current_system", 
+        "historical_database", 
+        "historical_registration", 
+        "historical_referral_code", 
+        "admin_verified", 
+        "manual_correction"
+      ],
+      default: "current_system",
+    },
   },
   { timestamps: true }
 );

@@ -31,7 +31,7 @@ export default function Success() {
     try {
       const data = await getMemberStatus(emailOrPhone);
       setProfile(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("❌ Status lookup error:", err);
       setError(err.message || "Failed to resolve your registration profile details.");
     } finally {
@@ -41,6 +41,7 @@ export default function Success() {
 
   useEffect(() => {
     fetchStatus();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emailOrPhone]);
 
   return (

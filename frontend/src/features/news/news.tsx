@@ -39,7 +39,7 @@ const FALLBACK_NEWS = [
 ];
 
 export default function News() {
-  const [videos, setVideos] = useState<any[]>([]);
+  const [videos, setVideos] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [usingFallback, setUsingFallback] = useState(false);
 
@@ -65,7 +65,7 @@ export default function News() {
       })
       .then((data) => {
         if (data.items && data.items.length > 0) {
-          const formattedVideos = data.items.map((item: any) => ({
+          const formattedVideos = data.items.map((item: Record<string, unknown>) => ({
             id: item.id?.videoId || item.id,
             title: item.snippet.title,
             thumbnail: item.snippet.thumbnails.high.url,

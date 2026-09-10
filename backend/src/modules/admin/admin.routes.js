@@ -16,7 +16,9 @@ import {
   getAdmins,
   createAdmin,
   updateAdminRole,
-  deleteAdmin
+  deleteAdmin,
+  getAnalytics,
+  bulkPrintCards
 } from "./admin.controller.js";
 
 const router = express.Router();
@@ -32,8 +34,10 @@ router.delete("/admins/:id", deleteAdmin);
 
 // General Dashboard
 router.get("/stats", getAdminStats);
+router.get("/analytics", getAnalytics);
 router.get("/members", getMembers);
 router.get("/audit-logs", getAuditLogs);
+router.post("/bulk-print", bulkPrintCards);
 
 // Member Actions
 router.put("/members/:id", updateMemberDetails);

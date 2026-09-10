@@ -63,7 +63,7 @@ export default function Login() {
       } else {
         navigate("/dashboard");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("❌ Authentication error:", err);
       setError(err.message || "Invalid email or password.");
     } finally {
@@ -86,7 +86,7 @@ export default function Login() {
       const res = await sendForgotPasswordOtp(forgotEmail);
       setForgotSuccess(res.message || "Password reset verification code sent to your email.");
       setForgotStep(2);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setForgotError(err.message || "Failed to send verification OTP.");
     } finally {
       setForgotLoading(false);
@@ -125,7 +125,7 @@ export default function Login() {
       setConfirmNewPassword("");
       setForgotSuccess("");
       alert(res.message || "Password reset successfully. Please log in with your new password.");
-    } catch (err: any) {
+    } catch (err: unknown) {
       setForgotError(err.message || "Failed to reset password.");
     } finally {
       setForgotLoading(false);

@@ -8,7 +8,14 @@ import ProtectedImage from "./ProtectedImage";
 declare global {
   interface Window {
     googleTranslateElementInit: () => void;
-    google: any;
+    google: {
+      translate?: {
+        TranslateElement: {
+          InlineLayout: { SIMPLE: string };
+          new (options: Record<string, unknown>, id: string): unknown;
+        };
+      };
+    };
   }
 }
 
@@ -17,7 +24,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userProfile, setUserProfile] = useState<any | null>(null);
+  const [userProfile, setUserProfile] = useState<{name: string; email: string; photo?: string; isAdmin?: boolean} | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const location = useLocation();

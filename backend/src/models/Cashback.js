@@ -15,9 +15,17 @@ const cashbackSchema = new mongoose.Schema(
       type: Number,
       default: 10,
     },
-    amount: {
+    grossAmount: {
       type: Number,
-      default: 500,
+      default: 200,
+    },
+    processingFee: {
+      type: Number,
+      default: 0,
+    },
+    netAmount: {
+      type: Number,
+      default: 200,
     },
     status: {
       type: String,
@@ -30,6 +38,39 @@ const cashbackSchema = new mongoose.Schema(
     },
     processedAt: {
       type: Date,
+    },
+    paymentMethod: {
+      type: String,
+    },
+    transactionId: {
+      type: String,
+    },
+    paidAt: {
+      type: Date,
+    },
+    approvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    approvedAt: {
+      type: Date,
+    },
+    rejectedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    rejectedAt: {
+      type: Date,
+    },
+    rejectionReason: {
+      type: String,
+    },
+    adminNotes: {
+      type: String,
+    },
+    isHistorical: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }

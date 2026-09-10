@@ -1,9 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { Printer, ShieldCheck, AlertCircle, Loader2, ArrowLeft, Calendar, Download } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
+import { AlertCircle, Loader2, ArrowLeft, Calendar, Download } from "lucide-react";
 import { getPublicVerification, getUploadUrl } from "../../api";
-import Logo from "../../assets/logo perfect.png";
 
 interface MemberDetails {
   name: string;
@@ -26,9 +24,7 @@ export default function IdCard() {
   const { membershipId } = useParams<{ membershipId: string }>();
   const [member, setMember] = useState<MemberDetails | null>(null);
   const [loading, setLoading] = useState(true);
-  const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState("");
-  const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Check authorization: only allow admin or own card owner
@@ -56,7 +52,7 @@ export default function IdCard() {
       try {
         const data = await getPublicVerification(membershipId);
         setMember(data);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("❌ Card fetch error:", err);
         setError(err.message || "Failed to load identity card details. Card may be invalid or pending approval.");
       } finally {
@@ -65,47 +61,6 @@ export default function IdCard() {
     };
     fetchMemberCard();
   }, [membershipId, navigate]);
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handleDownloadCard = async () => {
-    if (!cardRef.current) return;
-    setDownloading(true);
-    try {
-      const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(cardRef.current, {
-        scale: 3,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-      });
-      const imageUri = canvas.toDataURL("image/png", 1.0);
-      const link = document.createElement("a");
-      link.download = `${member?.membershipId || "VPM_Member"}_ID_Card.png`;
-      link.href = imageUri;
-      link.click();
-    } catch (err) {
-      console.error("❌ Card download failed:", err);
-      alert("Could not generate image file. Please use the Print button to save as PDF.");
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  const verificationUrl = `${window.location.origin}/verify/${membershipId}`;
-
-  // Helper date formatting
-  const formatDate = (dateStr?: string) => {
-    if (!dateStr) return "N/A";
-    return new Date(dateStr).toLocaleDateString("en-IN", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
 
   return (
     <div className="py-24 bg-slate-100 dark:bg-[#030712] min-h-screen text-slate-800 flex items-center justify-center print:bg-white print:py-0 print:min-h-0 relative overflow-hidden">

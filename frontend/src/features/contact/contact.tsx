@@ -40,7 +40,7 @@ export default function Contact() {
         from_email: "",
         message: "",
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("❌ Contact submit error:", err);
       setError(err.message || "Failed to submit message. Please try again later.");
     } finally {

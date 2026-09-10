@@ -19,7 +19,7 @@ export const getStoredUser = () => {
   const user = localStorage.getItem(USER_KEY);
   return user ? JSON.parse(user) : null;
 };
-export const setStoredUser = (user: any) => localStorage.setItem(USER_KEY, JSON.stringify(user));
+export const setStoredUser = (user: Record<string, unknown>) => localStorage.setItem(USER_KEY, JSON.stringify(user));
 export const clearAuth = () => {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);

@@ -32,7 +32,7 @@ export default function Verify() {
       try {
         const data = await getPublicVerification(membershipId);
         setMember(data);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("❌ Verification lookup error:", err);
         setError(err.message || "Invalid Membership ID or unapproved correspondent account.");
       } finally {

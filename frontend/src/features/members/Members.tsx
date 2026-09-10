@@ -34,7 +34,7 @@ export default function Members() {
     try {
       const data = await getPublicMembers();
       setMembers(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("❌ Error fetching members:", err);
       setError(err.message || "Failed to fetch directory from the server.");
     } finally {

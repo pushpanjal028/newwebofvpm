@@ -26,7 +26,7 @@ export const getAdminAuditLogs = async (page: number, limit: number) => {
   return await fetchWithAuth(`/admin/audit-logs?page=${page}&limit=${limit}`);
 };
 
-export const updateMemberDetails = async (id: string, memberData: any) => {
+export const updateMemberDetails = async (id: string, memberData: Record<string, unknown>) => {
   return await fetchWithAuth(`/admin/members/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -60,13 +60,48 @@ export const getAdminCashbacks = async () => {
   return await fetchWithAuth("/admin/cashbacks");
 };
 
-export const updateCashbackStatus = async (id: string, status: string) => {
-  return await fetchWithAuth(`/admin/cashbacks/${id}/status`, {
+export const getAdminAnalytics = async () => {
+  return await fetchWithAuth("/admin/analytics");
+};
+
+// Cashback Management
+export const getCashbacks = async () => {
+  return await fetchWithAuth("/admin/cashbacks");
+};
+
+export const updateCashbackStatus = async (
+  cashbackId: string, 
+  data: { 
+    status: string; 
+    rejectionReason?: string; 
+    paymentMethod?: string; 
+    transactionId?: string; 
+    adminNotes?: string; 
+    paidAmount?: number 
+  }
+) => {
+  return await fetchWithAuth(`/admin/cashbacks/${cashbackId}/status`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status }),
+    body: JSON.stringify(data),
   });
 };
+
+export const bulkPrintCards = async (userIds: string[]) => {
+  const token = localStorage.getItem("vpm_token");
+  const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/admin/bulk-print`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ userIds })
+  });
+  if (!response.ok) throw new Error("Failed to generate bulk PDF");
+  return await response.blob();
+};
+
+
 
 export const resetMemberPassword = async (id: string) => {
   return await fetchWithAuth(`/admin/members/${id}/reset-password`, {
@@ -92,7 +127,7 @@ export const getAdmins = async () => {
   return await fetchWithAuth("/admin/admins");
 };
 
-export const createAdmin = async (adminData: any) => {
+export const createAdmin = async (adminData: Record<string, unknown>) => {
   return await fetchWithAuth("/admin/admins", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

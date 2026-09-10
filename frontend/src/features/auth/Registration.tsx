@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { UserPlus, User, Mail, Phone, Building, Map, Key, Image, FileText, Briefcase, ArrowRight, ShieldCheck, AlertCircle, X, Loader2, CheckCircle2, Eye, EyeOff } from "lucide-react";
+import { UserPlus, User, Mail, Phone, Map, Key, Image, FileText, Briefcase, ArrowRight, ShieldCheck, AlertCircle, Loader2, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { registerUserPhase3, initRegistration, cleanupRegistrationAttempt, getPresignedUploadUrl, uploadFileToS3 } from "../../api";
+import { registerUserPhase3, initRegistration, getPresignedUploadUrl, uploadFileToS3 } from "../../api";
 
 export default function Registration() {
   const navigate = useNavigate();
@@ -117,7 +117,7 @@ export default function Registration() {
         
         setPhotoKey(presigned.key);
         setPhotoName(file.name);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("❌ Profile photo upload error:", err);
         setError("Profile photo upload failed. Please try again.");
       } finally {
@@ -144,7 +144,7 @@ export default function Registration() {
         
         setDocumentProofKey(presigned.key);
         setDocumentProofName(file.name);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("❌ Document upload error:", err);
         setError("Aadhar Front Side upload failed. Please try again.");
       } finally {
@@ -171,7 +171,7 @@ export default function Registration() {
         
         setDocumentProofBackKey(presigned.key);
         setDocumentProofBackName(file.name);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("❌ Document upload error:", err);
         setError("Aadhar Back Side upload failed. Please try again.");
       } finally {
@@ -241,7 +241,7 @@ export default function Registration() {
         navigate(`/payment?email=${encodeURIComponent(formData.email)}`);
       }, 4000);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("❌ Registration error:", err);
       setError(err.message || "Registration failed. Please check your details and try again.");
     } finally {

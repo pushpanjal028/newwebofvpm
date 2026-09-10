@@ -26,7 +26,7 @@ export const initRegistration = async () => {
 };
 
 export const getPresignedUploadUrl = async (filename: string, fileType: string, attemptId?: string, paymentAttemptId?: string): Promise<{ uploadUrl: string; key: string; publicUrl: string }> => {
-  const payload: any = { filename, fileType };
+  const payload: Record<string, string> = { filename, fileType };
   if (attemptId) payload.attemptId = attemptId;
   if (paymentAttemptId) payload.paymentAttemptId = paymentAttemptId;
 
@@ -80,7 +80,7 @@ export const cleanupPaymentAttempt = async (paymentAttemptId: string) => {
   return data;
 };
 
-export const registerUser = async (registrationData: any) => {
+export const registerUser = async (registrationData: Record<string, unknown>) => {
   const res = await fetch(`${BASE_URL}/auth/register`, {
     method: "POST",
     headers: {
@@ -95,7 +95,7 @@ export const registerUser = async (registrationData: any) => {
   return data;
 };
 
-export const registerUserPhase3 = async (registrationData: any) => {
+export const registerUserPhase3 = async (registrationData: Record<string, unknown>) => {
   const res = await fetch(`${BASE_URL}/auth/register-v2`, {
     method: "POST",
     headers: {
@@ -136,7 +136,7 @@ export const resendVerificationEmail = async (email: string) => {
   return data;
 };
 
-export const loginUser = async (credentials: any) => {
+export const loginUser = async (credentials: Record<string, unknown>) => {
   const data = await fetchWithAuth("/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -161,7 +161,7 @@ export const getCurrentMemberProfile = async () => {
   return await fetchWithAuth("/auth/me");
 };
 
-export const updateMemberProfile = async (profileData: any) => {
+export const updateMemberProfile = async (profileData: Record<string, unknown>) => {
   return await fetchWithAuth("/auth/profile", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -169,7 +169,7 @@ export const updateMemberProfile = async (profileData: any) => {
   });
 };
 
-export const changeMemberPassword = async (passwordData: any) => {
+export const changeMemberPassword = async (passwordData: Record<string, unknown>) => {
   return await fetchWithAuth("/auth/change-password", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

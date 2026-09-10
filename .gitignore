@@ -21,4 +21,6 @@ Thumbs.db
 .vscode/
 .idea/
 .env
-.env.test
+env.test
+dist
+uploads/
