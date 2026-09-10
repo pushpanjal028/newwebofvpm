@@ -27,7 +27,7 @@ export const sendOtp = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
+//areyyy ayyyyr
 export const registerUser = async (req, res) => {
   try {
     const { name, email, password, phone, organization, state, city, designation, otp, photo, documentProof, documentProofBack } = req.body;
