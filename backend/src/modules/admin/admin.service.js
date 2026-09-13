@@ -483,34 +483,34 @@ export const verifyMembershipService = async (adminUser, id, { status, rejection
       // Check if MemberCard already exists to ensure idempotency
       let memberCard = await MemberCard.findOne({ userId: user._id });
       
+      // Always generate PDF to ensure we have the latest one
+      const pdfBuffer = await generateCardPDF({
+        membershipId: user.membershipId,
+        name: user.name,
+        designation: user.designation,
+        organization: user.organization,
+        city: user.city,
+        state: user.state,
+        phone: user.phone,
+        photoUrl: user.photo ? (user.photo.startsWith('http') ? user.photo : `${process.env.API_URL || 'http://localhost:5000'}/api/uploads/view/${user.photo}`) : null,
+        localPhotoPath: user.photo,
+        validFromStr: user.issueDate.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" }),
+        validUntilStr: user.expiryDate.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" }),
+      });
+
+      // Save PDF to S3 or Local
+      const pdfFilename = `member_card_${user.membershipId}_${Date.now()}.pdf`;
+      let pdfUrl = `uploads/${pdfFilename}`;
+      
+      if (process.env.AWS_BUCKET_NAME) {
+        await uploadBufferToS3(pdfUrl, pdfBuffer, "application/pdf");
+      } else {
+        const localPath = path.join(__dirname, "../../../uploads", pdfFilename);
+        fs.writeFileSync(localPath, pdfBuffer);
+      }
+
+      // Create or update MemberCard
       if (!memberCard) {
-        // Generate PDF
-        const pdfBuffer = await generateCardPDF({
-          membershipId: user.membershipId,
-          name: user.name,
-          designation: user.designation,
-          organization: user.organization,
-          city: user.city,
-          state: user.state,
-          phone: user.phone,
-          photoUrl: user.photo ? (user.photo.startsWith('http') ? user.photo : `${process.env.API_URL || 'http://localhost:5000'}/api/uploads/view/${user.photo}`) : null,
-          localPhotoPath: user.photo,
-          validFromStr: user.issueDate.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" }),
-          validUntilStr: user.expiryDate.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" }),
-        });
-
-        // Save PDF to S3 or Local
-        const pdfFilename = `member_card_${user.membershipId}_${Date.now()}.pdf`;
-        let pdfUrl = `uploads/${pdfFilename}`;
-        
-        if (process.env.AWS_BUCKET_NAME) {
-          await uploadBufferToS3(pdfUrl, pdfBuffer, "application/pdf");
-        } else {
-          const localPath = path.join(__dirname, "../../../uploads", pdfFilename);
-          fs.writeFileSync(localPath, pdfBuffer);
-        }
-
-        // Create MemberCard
         memberCard = new MemberCard({
           userId: user._id,
           cardNumber: user.membershipId,
@@ -518,20 +518,25 @@ export const verifyMembershipService = async (adminUser, id, { status, rejection
           validUntil: user.expiryDate,
           pdfUrl: pdfUrl,
         });
-        await memberCard.save();
+      } else {
+        memberCard.cardNumber = user.membershipId;
+        memberCard.validFrom = user.issueDate;
+        memberCard.validUntil = user.expiryDate;
+        memberCard.pdfUrl = pdfUrl;
+      }
+      await memberCard.save();
 
-        // Send Email
-        try {
-          await sendCardEmail(user.email, user.name, pdfBuffer);
-          memberCard.emailSendStatus = "sent";
-          memberCard.emailSentAt = new Date();
-          await memberCard.save();
-        } catch (emailErr) {
-          memberCard.emailSendStatus = "failed";
-          memberCard.emailLastError = emailErr.message;
-          await memberCard.save();
-          console.error("❌ Email failed during I-Card generation, but DB state is safe:", emailErr);
-        }
+      // Send Email
+      try {
+        await sendCardEmail(user.email, user.name, pdfBuffer);
+        memberCard.emailSendStatus = "sent";
+        memberCard.emailSentAt = new Date();
+        await memberCard.save();
+      } catch (emailErr) {
+        memberCard.emailSendStatus = "failed";
+        memberCard.emailLastError = emailErr.message;
+        await memberCard.save();
+        console.error("❌ Email failed during I-Card generation, but DB state is safe:", emailErr);
       }
     } catch (cardErr) {
       console.error("❌ I-Card generation failed, but member approval is safe:", cardErr);
