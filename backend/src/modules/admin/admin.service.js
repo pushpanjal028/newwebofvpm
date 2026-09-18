@@ -199,6 +199,10 @@ export const updateMemberDetailsService = async (adminUser, id, { name, phone, o
         await uploadBufferToS3(pdfUrl, pdfBuffer, "application/pdf");
       } else {
         const localPath = path.join(__dirname, "../../../uploads", path.basename(pdfUrl));
+        const dirPath = path.dirname(localPath);
+        if (!fs.existsSync(dirPath)) {
+          fs.mkdirSync(dirPath, { recursive: true });
+        }
         fs.writeFileSync(localPath, pdfBuffer);
       }
 
@@ -506,6 +510,10 @@ export const verifyMembershipService = async (adminUser, id, { status, rejection
         await uploadBufferToS3(pdfUrl, pdfBuffer, "application/pdf");
       } else {
         const localPath = path.join(__dirname, "../../../uploads", pdfFilename);
+        const dirPath = path.dirname(localPath);
+        if (!fs.existsSync(dirPath)) {
+          fs.mkdirSync(dirPath, { recursive: true });
+        }
         fs.writeFileSync(localPath, pdfBuffer);
       }
 
@@ -550,7 +558,15 @@ export const verifyMembershipService = async (adminUser, id, { status, rejection
     expiryDate: user.expiryDate,
   }, oldValue, newValue);
 
-  return { message: `Membership status verified as: ${status}`, user };
+  const userResponse = user.toObject();
+  if (status === "approved") {
+    const memberCard = await MemberCard.findOne({ userId: user._id });
+    if (memberCard) {
+      userResponse.memberCard = memberCard;
+    }
+  }
+
+  return { message: `Membership status verified as: ${status}`, user: userResponse };
 };
 
 export const getCashbacksService = async () => {

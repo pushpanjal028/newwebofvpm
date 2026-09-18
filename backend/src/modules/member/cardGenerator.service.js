@@ -443,7 +443,7 @@ export const generateCardPDF = async (memberData) => {
     <body>
       <div class="card-wrapper">
         <div class="press-corner">
-          <span class="press-text">प्रेस</span>
+          <span class="press-text">PRESS</span>
         </div>
         
         <div class="r-no">पंजीकरण संख्या: 547/06T</div>
@@ -556,7 +556,14 @@ export const generateCardPDF = async (memberData) => {
   try {
     browser = await puppeteer.launch({
       headless: "new",
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: [
+        '--no-sandbox', 
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--disable-software-rasterizer',
+        '--no-zygote'
+      ]
     });
 
     const page = await browser.newPage();
