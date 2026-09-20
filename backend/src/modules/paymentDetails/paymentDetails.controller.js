@@ -2,11 +2,11 @@ import { getPaymentDetailsService, updatePaymentDetailsService } from "./payment
 
 export const getPaymentDetails = async (req, res) => {
   try {
-    const result = await getPaymentDetailsService(req.user.id);
+    const result = await getPaymentDetailsService(req.user._id);
     res.json(result);
   } catch (err) {
     console.error("❌ Get payment details controller error:", err);
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: err.message || "Failed to get payment details" });
   }
 };
 
@@ -14,7 +14,7 @@ export const updatePaymentDetails = async (req, res) => {
   try {
     const { accountHolderName, bankName, accountNumber, IFSC, UPI, qrCodeReference } = req.body;
 
-    const result = await updatePaymentDetailsService(req.user.id, {
+    const result = await updatePaymentDetailsService(req.user._id, {
       accountHolderName,
       bankName,
       accountNumber,
@@ -26,6 +26,6 @@ export const updatePaymentDetails = async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error("❌ Update payment details controller error:", err);
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: err.message || "Failed to update payment details" });
   }
 };
