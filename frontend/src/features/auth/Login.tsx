@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Lock, Mail, Key, ShieldCheck, AlertCircle, ArrowRight, Eye, EyeOff, CheckCircle, Loader2, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { loginUser, sendForgotPasswordOtp, resetPasswordWithOtp } from "../../api";
+import { loginUser, sendForgotPasswordOtp, resetPasswordWithOtp, googleLogin } from "../../api";
+import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -41,6 +42,33 @@ export default function Login() {
       }
     }
   }, [navigate]);
+
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+    if (!credentialResponse.credential) return;
+    setLoading(true);
+    setError("");
+
+    try {
+      const data = await googleLogin(credentialResponse.credential);
+      if (data.isNewUser) {
+        navigate("/register", { state: { googleData: data.googleData, registrationToken: data.registrationToken } });
+        return;
+      }
+
+      window.dispatchEvent(new Event("storage"));
+
+      if (data.user?.isAdmin) {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/dashboard");
+      }
+    } catch (err: any) {
+      console.error("❌ Google authentication error:", err);
+      setError(err.message || "Google authentication failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -171,6 +199,25 @@ export default function Login() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          <div className="flex justify-center mb-6">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => setError("Google Sign-In was unsuccessful. Please try again.")}
+              theme="outline"
+              size="large"
+              shape="pill"
+            />
+          </div>
+          
+          <div className="relative flex items-center justify-center mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200"></div>
+            </div>
+            <div className="relative bg-white px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              Or continue with email
+            </div>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email Address */}

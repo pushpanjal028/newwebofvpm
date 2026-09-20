@@ -209,4 +209,19 @@ export const resetPasswordWithOtp = async (resetData: { email: string; otp: stri
   return data;
 };
 
-
+export const googleLogin = async (token: string) => {
+  const res = await fetch(`${BASE_URL}/auth/google`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || "Google authentication failed");
+  }
+  if (data.token) {
+    setAuthToken(data.token);
+    setStoredUser(data.user);
+  }
+  return data;
+};

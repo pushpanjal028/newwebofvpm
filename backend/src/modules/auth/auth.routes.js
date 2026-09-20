@@ -14,7 +14,9 @@ import {
   registerPhase3,
   verifyEmailToken,
   resendVerificationEmail,
+  googleAuth,
 } from "./auth.controller.js";
+
 import auth from "../../middlewares/auth.js";
 import upload from "../../middlewares/upload.js";
 
@@ -55,6 +57,8 @@ router.post("/login", loginLimiter, loginUser);
 router.post("/contact", contactLimiter, submitContactForm);
 router.post("/forgot-password/send-otp", otpLimiter, forgotPasswordSendOtp);
 router.post("/forgot-password/reset", loginLimiter, resetPasswordWithOtp);
+router.post("/google", googleAuth);
+
 
 // Protected routes
 router.get("/me", auth, getCurrentProfile);

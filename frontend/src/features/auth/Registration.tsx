@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { UserPlus, User, Mail, Phone, Map, Key, Image, FileText, Briefcase, ArrowRight, ShieldCheck, AlertCircle, Loader2, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { registerUserPhase3, initRegistration, getPresignedUploadUrl, uploadFileToS3 } from "../../api";
+import { registerUserPhase3, initRegistration, getPresignedUploadUrl, uploadFileToS3, googleLogin } from "../../api";
+import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 
 export default function Registration() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const [isGoogleRegistration, setIsGoogleRegistration] = useState(false);
+  const [registrationToken, setRegistrationToken] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -33,6 +38,20 @@ export default function Registration() {
 
   // Load draft on mount
   useEffect(() => {
+    // Check for Google Auth redirect
+    if (location.state?.googleData && location.state?.registrationToken) {
+      setIsGoogleRegistration(true);
+      setRegistrationToken(location.state.registrationToken);
+      setFormData((prev) => ({
+        ...prev,
+        fullName: location.state.googleData.name || "",
+        email: location.state.googleData.email || "",
+      }));
+      // Clean up location state so refresh doesn't trigger it infinitely if token expires
+      window.history.replaceState({}, document.title);
+      return; // Skip loading draft to ensure Google data takes precedence
+    }
+
     try {
       const draftJSON = localStorage.getItem("vpmh_registration_draft");
       if (draftJSON) {
@@ -184,8 +203,9 @@ export default function Registration() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.fullName || !formData.email || !formData.phone || !formData.state || !formData.city || !formData.password) {
-      setError("Please fill out all required fields (Name, Email, Phone, State, City, Password) completely before submitting.");
+    // Update validation logic to account for Google Registration (no password required)
+    if (!formData.fullName || !formData.email || !formData.phone || !formData.state || !formData.city || (!isGoogleRegistration && !formData.password)) {
+      setError(`Please fill out all required fields (Name, Email, Phone, State, City${!isGoogleRegistration ? ", Password" : ""}) completely before submitting.`);
       return;
     }
 
@@ -222,12 +242,13 @@ export default function Registration() {
         state: formData.state,
         city: formData.city,
         designation: formData.designation,
-        password: formData.password,
+        password: isGoogleRegistration ? undefined : formData.password,
         photo: photoKey,
         documentProof: documentProofKey,
         documentProofBack: documentProofBackKey,
         coordinatorCode: formData.coordinatorCode || undefined,
         attemptId,
+        registrationToken: registrationToken || undefined,
       };
 
       await registerUserPhase3(payload);
@@ -248,6 +269,41 @@ export default function Registration() {
       setLoading(false);
     }
   };
+
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+    if (!credentialResponse.credential) return;
+    setLoading(true);
+    setError("");
+
+    try {
+      const data = await googleLogin(credentialResponse.credential);
+      if (data.isNewUser) {
+        setIsGoogleRegistration(true);
+        setRegistrationToken(data.registrationToken);
+        setFormData((prev) => ({
+          ...prev,
+          fullName: data.googleData.name || "",
+          email: data.googleData.email || "",
+        }));
+        return;
+      }
+
+      window.dispatchEvent(new Event("storage"));
+
+      // Direct to dashboard (since account is created)
+      if (data.user?.isAdmin) {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/dashboard");
+      }
+    } catch (err: any) {
+      console.error("❌ Google authentication error:", err);
+      setError(err.message || "Google authentication failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   return (
     <div className="py-24 bg-slate-50 dark:bg-[#030712] text-slate-800 dark:text-slate-100 transition-colors duration-300 min-h-screen relative overflow-hidden flex items-center justify-center">
@@ -311,6 +367,25 @@ export default function Registration() {
             )}
           </AnimatePresence>
 
+          <div className="flex justify-center mb-6">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => setError("Google Sign-In was unsuccessful. Please try again.")}
+              theme="outline"
+              size="large"
+              shape="pill"
+            />
+          </div>
+          
+          <div className="relative flex items-center justify-center mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200"></div>
+            </div>
+            <div className="relative bg-white px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              Or register manually
+            </div>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Full Name */}
@@ -327,9 +402,10 @@ export default function Registration() {
                     name="fullName"
                     value={formData.fullName}
                     onChange={handleChange}
+                    readOnly={isGoogleRegistration}
+                    className={`w-full bg-slate-900/5 border ${isGoogleRegistration ? "border-slate-300 opacity-70" : "border-slate-200 focus:border-amber-500"} rounded-xl py-3 px-10 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-amber-500/10 transition-all`}
+                    placeholder="John Doe"
                     required
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all text-sm"
-                    placeholder="E.g., Rajesh Kumar"
                   />
                 </div>
               </div>
@@ -339,18 +415,17 @@ export default function Registration() {
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
                   Email Address *
                 </label>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-amber-500 transition-colors">
-                    <Mail className="h-4.5 w-4.5" />
-                  </div>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <input
                     type="email"
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
+                    readOnly={isGoogleRegistration}
+                    className={`w-full bg-slate-900/5 border ${isGoogleRegistration ? "border-slate-300 opacity-70 cursor-not-allowed" : "border-slate-200 focus:border-amber-500"} rounded-xl py-3 px-10 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-amber-500/10 transition-all`}
+                    placeholder="john@example.com"
                     required
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all text-sm"
-                    placeholder="name@example.com"
                   />
                 </div>
               </div>
@@ -376,33 +451,34 @@ export default function Registration() {
                 </div>
               </div>
 
-              {/* Password */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Password *
-                </label>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-amber-500 transition-colors">
-                    <Key className="h-4.5 w-4.5" />
+              {/* Password - Hidden for Google Auth */}
+              {!isGoogleRegistration && (
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Create Password *
+                  </label>
+                  <div className="relative">
+                    <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      className="w-full bg-slate-900/5 border border-slate-200 rounded-xl py-3 pl-10 pr-12 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all"
+                      placeholder="••••••••"
+                      required={!isGoogleRegistration}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-10 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all text-sm"
-                    placeholder="••••••••"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                  <p className="text-[10px] text-slate-500 mt-1 ml-1">Must be at least 6 characters long.</p>
                 </div>
-              </div>
+              )}
 
               {/* Designation / Role */}
               <div className="space-y-1.5 md:col-span-2">

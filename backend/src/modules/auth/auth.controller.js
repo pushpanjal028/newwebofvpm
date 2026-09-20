@@ -12,6 +12,7 @@ import {
   registerPhase3Service,
   verifyEmailTokenService,
   resendVerificationEmailService,
+  googleAuthService,
 } from "./auth.service.js";
 
 export const sendOtp = async (req, res) => {
@@ -152,7 +153,7 @@ export const resetPasswordWithOtp = async (req, res) => {
 
 export const registerPhase3 = async (req, res) => {
   try {
-    const { name, email, password, phone, organization, state, city, designation, photo, documentProof, documentProofBack, coordinatorCode, attemptId } = req.body;
+    const { name, email, password, phone, organization, state, city, designation, photo, documentProof, documentProofBack, coordinatorCode, attemptId, registrationToken } = req.body;
     const result = await registerPhase3Service({
       name,
       email,
@@ -166,7 +167,8 @@ export const registerPhase3 = async (req, res) => {
       documentProof,
       documentProofBack,
       coordinatorCode,
-      attemptId
+      attemptId,
+      registrationToken
     });
     res.json(result);
   } catch (err) {
@@ -194,6 +196,17 @@ export const resendVerificationEmail = async (req, res) => {
   } catch (err) {
     console.error("❌ Resend Verification Email error:", err);
     res.status(500).json({ message: err.message });
+  }
+};
+
+export const googleAuth = async (req, res) => {
+  try {
+    const { token } = req.body;
+    const result = await googleAuthService(token);
+    res.json(result);
+  } catch (err) {
+    console.error("❌ Google Auth controller error:", err);
+    res.status(401).json({ success: false, message: "Google authentication failed. Please try again." });
   }
 };
 

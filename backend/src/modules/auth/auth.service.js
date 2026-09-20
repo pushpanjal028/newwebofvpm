@@ -8,6 +8,9 @@ import Referral from "../../models/Referral.js";
 import RegistrationAttempt from "../../models/RegistrationAttempt.js";
 import transporter from "../../config/mailer.js";
 import MemberCard from "../../models/MemberCard.js";
+import { OAuth2Client } from "google-auth-library";
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 export const sendOtpService = async (email) => {
   const existing = await User.findOne({ email: { $regex: new RegExp(`^${email}$`, "i") } });
@@ -432,10 +435,25 @@ export const sendVerificationEmailService = async (user) => {
 };
 
 export const registerPhase3Service = async ({
-  name, email, password, phone, organization, state, city, designation, photo, documentProof, documentProofBack, coordinatorCode, attemptId
+  name, email, password, phone, organization, state, city, designation, photo, documentProof, documentProofBack, coordinatorCode, attemptId, registrationToken
 }) => {
-  if (!name || !email || !password || !phone) {
-    throw new Error("Name, email, password, and phone are required.");
+  let googleData = null;
+  if (registrationToken) {
+    try {
+      googleData = jwt.verify(registrationToken, process.env.JWT_SECRET);
+      if (googleData.type !== "google_registration" || googleData.email !== email) {
+        throw new Error("Invalid registration token");
+      }
+    } catch (err) {
+      throw new Error("Registration session expired or invalid. Please authenticate with Google again.");
+    }
+  }
+
+  if (!name || !email || !phone) {
+    throw new Error("Name, email, and phone are required.");
+  }
+  if (!googleData && !password) {
+    throw new Error("Password is required.");
   }
 
   if (!photo) {
@@ -484,7 +502,10 @@ export const registerPhase3Service = async ({
     validCoordinatorCodeUsed = coordinatorCode;
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  let hashedPassword = undefined;
+  if (!googleData) {
+    hashedPassword = await bcrypt.hash(password, 10);
+  }
   const newCoordinatorCode = "VPMH-" + crypto.randomBytes(3).toString("hex").toUpperCase();
 
   const newUser = new User({
@@ -501,10 +522,13 @@ export const registerPhase3Service = async ({
     documentProofBack: documentProofBack || "",
     coordinatorCode: newCoordinatorCode,
     referredBy: referredByUserId,
-    isEmailVerified: false,
+    isEmailVerified: googleData ? true : false,
+    googleId: googleData ? googleData.googleId : undefined,
+    authProvider: googleData ? "google" : "local",
     paymentStatus: "pending",
     approvalStatus: "pending",
   });
+
 
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -537,7 +561,10 @@ export const registerPhase3Service = async ({
     session.endSession();
   }
 
-  await sendVerificationEmailService(newUser);
+  if (!googleData) {
+    await sendVerificationEmailService(newUser);
+  }
+
 
   return { message: "Account created successfully. We've sent a verification link to your email." };
 };
@@ -576,3 +603,74 @@ export const resendVerificationEmailService = async (email) => {
   return { message: "Verification link resent successfully." };
 };
 
+export const googleAuthService = async (token) => {
+  if (!token) throw new Error("Google token is required");
+
+  // Verify the Google token
+  const ticket = await googleClient.verifyIdToken({
+    idToken: token,
+    audience: process.env.GOOGLE_CLIENT_ID,
+  });
+  const payload = ticket.getPayload();
+  if (!payload) throw new Error("Invalid Google token");
+
+  const { sub: googleId, email, name, picture, email_verified } = payload;
+
+  let user = await User.findOne({ googleId });
+
+  if (!user) {
+    // Check if user exists with the same email but local provider
+    user = await User.findOne({ email });
+
+    if (user) {
+      // Link Google account to existing local account
+      user.googleId = googleId;
+      if (user.authProvider === "local") {
+        user.authProvider = "both";
+      }
+      
+      // Update missing profile info if possible, like photo
+      if (!user.photo && picture) {
+         user.photo = picture;
+      }
+
+      await user.save();
+    } else {
+      // Create short-lived registration token for frontend to use in complete registration flow
+      const registrationToken = jwt.sign(
+        { googleId, email, name, picture, email_verified, type: "google_registration" },
+        process.env.JWT_SECRET,
+        { expiresIn: "15m" }
+      );
+      
+      return {
+        success: true,
+        isNewUser: true,
+        registrationToken,
+        googleData: { name, email, picture }
+      };
+    }
+  }
+
+  // Generate standard application JWT session
+  const authToken = jwt.sign(
+    { id: user._id, isAdmin: user.isAdmin },
+    process.env.JWT_SECRET,
+    { expiresIn: "7d" }
+  );
+
+  return {
+    message: "Google Login successful",
+    token: authToken,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      isAdmin: user.isAdmin,
+      membershipId: user.membershipId,
+      paymentStatus: user.paymentStatus,
+      approvalStatus: user.approvalStatus,
+      photo: user.photo,
+    },
+  };
+};
