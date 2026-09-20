@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getPaymentDetails, updatePaymentDetails } from '../../api';
+import { getPaymentDetails, updatePaymentDetails, getPresignedUploadUrl, uploadFileToS3 } from '../../api';
 import toast from 'react-hot-toast';
 import { getUploadUrl } from '../../api/client';
 
@@ -74,20 +74,24 @@ export const PaymentDetailsForm = () => {
 
     setSubmitting(true);
     try {
-      const fd = new FormData();
-      Object.entries(formData).forEach(([key, value]) => {
-        if (key !== 'confirmAccountNumber') {
-          fd.append(key, value);
-        }
-      });
+      let finalQrCodeReference = details?.qrCodeReference || "";
+
       if (qrCodeFile) {
-        fd.append('qrCode', qrCodeFile);
+        toast.loading("Uploading QR Code...", { id: "qrUpload" });
+        const { uploadUrl, key } = await getPresignedUploadUrl(qrCodeFile.name, qrCodeFile.type);
+        await uploadFileToS3(uploadUrl, qrCodeFile);
+        finalQrCodeReference = key;
+        toast.dismiss("qrUpload");
       } else if (!qrPreview && details?.qrCodeReference) {
-        // Handle explicit removal if needed by API
-        fd.append('removeQr', 'true');
+        finalQrCodeReference = ""; // Removed
       }
 
-      await updatePaymentDetails(fd);
+      const payload = {
+        ...formData,
+        qrCodeReference: finalQrCodeReference,
+      };
+
+      await updatePaymentDetails(payload);
       toast.success('Payment details updated successfully');
       fetchDetails(); // refresh status
     } catch (err: unknown) {

@@ -7,11 +7,10 @@ const router = express.Router();
 
 router.get("/", auth, getPaymentDetails);
 
-// Allow uploading QR Code
+// Allow updating Payment Details (JSON with S3 keys)
 router.put(
   "/",
   auth,
-  upload.fields([{ name: "qrCode", maxCount: 1 }]),
   updatePaymentDetails
 );
 

@@ -12,12 +12,7 @@ export const getPaymentDetails = async (req, res) => {
 
 export const updatePaymentDetails = async (req, res) => {
   try {
-    const { accountHolderName, bankName, accountNumber, IFSC, UPI } = req.body;
-    let qrCodePath;
-    
-    if (req.files && req.files.qrCode && req.files.qrCode[0]) {
-      qrCodePath = req.files.qrCode[0].filename;
-    }
+    const { accountHolderName, bankName, accountNumber, IFSC, UPI, qrCodeReference } = req.body;
 
     const result = await updatePaymentDetailsService(req.user.id, {
       accountHolderName,
@@ -25,7 +20,7 @@ export const updatePaymentDetails = async (req, res) => {
       accountNumber,
       IFSC,
       UPI,
-      qrCodePath,
+      qrCodePath: qrCodeReference,
     });
     
     res.json(result);
