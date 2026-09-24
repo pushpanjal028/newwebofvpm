@@ -36,23 +36,17 @@ mongoose
 // Auto-seed admin user
 const seedAdmin = async () => {
   try {
-    const adminEmail = process.env.ADMIN_EMAIL;
-    const adminPassword = process.env.ADMIN_PASSWORD;
-    const adminName = process.env.ADMIN_NAME || "Admin Assembly";
-    const adminPhone = process.env.ADMIN_PHONE;
-
-    if (!adminEmail || !adminPassword) {
-      throw new Error("ADMIN_EMAIL and ADMIN_PASSWORD must be set in backend/.env");
-    }
+    const adminEmail = process.env.ADMIN_EMAIL || "[EMAIL_ADDRESS]";
+    const adminPassword = process.env.ADMIN_PASSWORD || "*";
 
     const adminExists = await User.findOne({ email: adminEmail });
     const hashedPassword = await bcrypt.hash(adminPassword, 10);
     if (!adminExists) {
       const newAdmin = new User({
-        name: adminName,
+        name: "Admin Assembly",
         email: adminEmail,
         password: hashedPassword,
-        phone: adminPhone,
+        phone: "6393287185",
         isAdmin: true,
         paymentStatus: "paid",
         approvalStatus: "approved",
