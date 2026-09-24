@@ -9,14 +9,6 @@ import RegistrationAttempt from "../../models/RegistrationAttempt.js";
 import transporter from "../../config/mailer.js";
 import MemberCard from "../../models/MemberCard.js";
 import { OAuth2Client } from "google-auth-library";
-import { generateCardPDF } from "../member/cardGenerator.service.js";
-import { uploadBufferToS3 } from "../../utils/s3.js";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -567,69 +559,6 @@ export const registerPhase3Service = async ({
     throw err; // Propagate the error so the user isn't falsely told it succeeded
   } finally {
     session.endSession();
-  }
-
-  // Auto-generate membership ID and I-Card immediately after registration
-  try {
-    let sequence = 1001;
-    const lastUser = await User.findOne({
-      membershipId: { $regex: /^vpmh-\d{4}-\d+$/i },
-    }).sort({ membershipId: -1 });
-
-    if (lastUser && lastUser.membershipId) {
-      const parts = lastUser.membershipId.split("-");
-      const lastSeq = parseInt(parts[parts.length - 1], 10);
-      if (!isNaN(lastSeq)) {
-        sequence = lastSeq + 1;
-      }
-    }
-
-    const year = new Date().getFullYear();
-    newUser.membershipId = `vpmh-${year}-${sequence}`;
-    newUser.issueDate = new Date();
-    const expiry = new Date();
-    expiry.setFullYear(expiry.getFullYear() + 1);
-    newUser.expiryDate = expiry;
-    await newUser.save();
-
-    const pdfBuffer = await generateCardPDF({
-      membershipId: newUser.membershipId,
-      name: newUser.name,
-      designation: newUser.designation,
-      organization: newUser.organization,
-      city: newUser.city,
-      state: newUser.state,
-      phone: newUser.phone,
-      photoUrl: newUser.photo ? (newUser.photo.startsWith('http') ? newUser.photo : `${process.env.API_URL || 'http://localhost:5000'}/api/uploads/view/${newUser.photo}`) : null,
-      localPhotoPath: newUser.photo,
-      validFromStr: newUser.issueDate.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" }),
-      validUntilStr: newUser.expiryDate.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" }),
-    });
-
-    const pdfFilename = `member_card_${newUser.membershipId}_${Date.now()}.pdf`;
-    let pdfUrl = `uploads/${pdfFilename}`;
-    
-    if (process.env.AWS_BUCKET_NAME) {
-      await uploadBufferToS3(pdfUrl, pdfBuffer, "application/pdf");
-    } else {
-      const localPath = path.join(__dirname, "../../../uploads", pdfFilename);
-      const dirPath = path.dirname(localPath);
-      if (!fs.existsSync(dirPath)) {
-        fs.mkdirSync(dirPath, { recursive: true });
-      }
-      fs.writeFileSync(localPath, pdfBuffer);
-    }
-
-    const memberCard = new MemberCard({
-      userId: newUser._id,
-      cardNumber: newUser.membershipId,
-      validFrom: newUser.issueDate,
-      validUntil: newUser.expiryDate,
-      pdfUrl: pdfUrl,
-    });
-    await memberCard.save();
-  } catch (cardErr) {
-    console.error("❌ I-Card generation failed during registration:", cardErr);
   }
 
   if (!googleData) {
