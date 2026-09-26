@@ -177,7 +177,9 @@ export const updateMemberDetailsService = async (adminUser, id, { name, phone, o
   // Trigger card regeneration if member is approved
   if (user.approvalStatus === "approved" && user.membershipId && user.issueDate && user.expiryDate) {
     try {
-      let memberCard = await MemberCard.findOne({ userId: user._id });
+      let memberCard = await MemberCard.findOne({
+        $or: [{ userId: user._id }, { cardNumber: user.membershipId }]
+      });
       
       const pdfBuffer = await generateCardPDF({
         membershipId: user.membershipId,
@@ -215,6 +217,10 @@ export const updateMemberDetailsService = async (adminUser, id, { name, phone, o
           pdfUrl: pdfUrl,
         });
       } else {
+        memberCard.userId = user._id;
+        memberCard.cardNumber = user.membershipId;
+        memberCard.validFrom = user.issueDate;
+        memberCard.validUntil = user.expiryDate;
         memberCard.pdfUrl = pdfUrl;
       }
       await memberCard.save();
